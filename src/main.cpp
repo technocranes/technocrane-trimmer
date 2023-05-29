@@ -1,20 +1,15 @@
 #include <stdio.h>
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include "cgidata.h"
+#include "fbxdocument.h"
+#include "fbximporter.h"
+#include "fbxexporter.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
 
-/**
- * main entry point.
- * 
- * \return 
- */
-int main() {
-    printf("Welcome To A Technocrane Trimmer!\n");
-    return 0;
-}
 
 #ifdef __cplusplus
     #ifdef __EMSCRIPTEN__
@@ -148,9 +143,9 @@ bool LoadAscii(uint8_t* buffer, size_t size, float frame_rate, std::vector<CGIDa
  */
 bool LoadBinary(uint8_t* buffer, size_t size, std::vector<CGIDataCartesian>& packets)
 {
-	membuf mem_buf(reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
-	std::istream in(&mem_buf);
-	in.ignore(std::numeric_limits<std::streamsize>::max());
+	//membuf mem_buf(reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
+	//std::istream in(&mem_buf);
+	//in.ignore(std::numeric_limits<std::streamsize>::max());
 	
 	if (size <= 0) 
 	{
@@ -168,11 +163,14 @@ bool LoadBinary(uint8_t* buffer, size_t size, std::vector<CGIDataCartesian>& pac
 
 	packets.resize(number_of_packets);
 
+	memcpy(packets.data(), buffer, size);
+
+	/*
 	for (size_t i = 0; i < number_of_packets; ++i) {
 		in.read(reinterpret_cast<char*>(&packets[i]), sizeof(CGIDataCartesian));
 		packets[i].packetNumber = i;
 	}
-
+	*/
 	return true;
 }
 
@@ -203,5 +201,90 @@ EXTERN int load_file(uint8_t* buffer, size_t size) {
 	LoadPackets(buffer, size, 30.f, packets);
 
 	printf("Loaded packets - %zu\n", packets.size());
+	if (!packets.empty())
+	{
+		const CGIDataCartesian& firstPacket = packets[0];
+		const CGIDataCartesian& lastPacket = packets[packets.size() - 1];
+
+		printf("Start TimeCode %d:%d:%d:%d\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
+			firstPacket.timeCode.frames);
+		printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
+			lastPacket.timeCode.frames);
+	}
+	
+
+	// write into fbx
+
+	fbx::FBXDocument doc;
+
+	//doc.createHeader();
+	//doc.createGlobalSettings();
+	//doc.createDocuments();
+	//doc.createReferences();
+	//doc.createDefinitions();
+
+	fbx::Importer lImporter;
+	bool lSuccess = lImporter.Initialize("C:\\work\\technocrane\\tdcamera.fbx");
+
+	if (lSuccess)
+	{
+		lImporter.Import(doc);
+
+		// modify keyframes
+		
+		doc.ParseObjects();
+		doc.ParseConnections();
+
+		//
+
+		fbx::Exporter	lExporter;
+
+		std::cout << "Writing test.fbx" << std::endl;
+		lExporter.Initialize("c:\\work\\technocrane\\test-cgi.fbx", false);
+
+		lExporter.Export(doc);
+	}
+	/*
+	fbx::Exporter	lExporter;
+
+	std::cout << "Writing test.fbx" << std::endl;
+	lExporter.Initialize("c:\\work\\technocrane\\test-cgi.fbx", false);
+
+	lExporter.Export(doc);
+	*/
 	return 1;
+}
+
+
+/**
+ * main entry point.
+ *
+ * \return
+ */
+int main(int argc, char* argv[]) {
+	printf("Welcome To A Technocrane Trimmer!\n");
+
+	if (argc > 1)
+	{
+		const char* fname{ argv[1] };
+		std::ifstream fstream(fname, std::ios::binary | std::ios::ate);
+		std::streamsize size = fstream.tellg();
+
+		if (size <= 0)
+		{
+			printf("Failed to read the file!\n");
+			return -1;
+		}
+
+		fstream.seekg(0, std::ios::beg);
+
+		std::vector<uint8_t> buffer(size);
+		if (fstream.read((char*)buffer.data(), size))
+		{
+			/* worked! */
+			load_file(buffer.data(), buffer.size());
+		}
+	}
+
+	return 0;
 }
