@@ -50,6 +50,20 @@ Model* Scene::FindModel(const char* name)
 	return nullptr;
 }
 
+bool Scene::Store(FBXDocument* document)
+{
+	for (auto& iter : document->m_objectMap)
+	{
+		if (iter.first == 0)
+			continue;
+
+		if (iter.second.object == nullptr)
+			continue;
+
+		iter.second.object->Store(*document, *iter.second.element);
+	}
+	return true;
+}
 
 bool Scene::Retrive(FBXDocument* document)
 {

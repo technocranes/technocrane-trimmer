@@ -24,6 +24,7 @@ namespace fbx
 		Model* FindModel(const char* name);
 
 		bool Retrive(FBXDocument* document);
+		bool Store(FBXDocument* document);
 
 	private:
 

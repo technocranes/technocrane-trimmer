@@ -9,11 +9,11 @@ Model::Model()
 {
 }
 
-const int Model::GetAnimationNodeCount() const
+int Model::GetAnimationNodeCount() const
 {
 	return static_cast<int>(m_AnimationNodes.size());
 }
-const AnimationCurveNode* Model::GetAnimationNode(int index) const
+AnimationCurveNode* Model::GetAnimationNode(int index) const
 {
 	return m_AnimationNodes[index];
 }

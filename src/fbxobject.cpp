@@ -19,3 +19,8 @@ void FBXObject::Retreive(const FBXDocument& _document, const FBXNode& _element)
 
 	OnRetreive(_document, _element);
 }
+
+void FBXObject::Store(const FBXDocument& _document, const FBXNode& _element)
+{
+	OnStore(_document, _element);
+}

@@ -62,6 +62,25 @@ public:
     FBXProperty(const std::string&);
     FBXProperty(const char *);
 
+    // primitive values
+    void Set(int16_t);
+    void Set(bool);
+    void Set(int32_t);
+    void Set(uint32_t);
+    void Set(float);
+    void Set(double);
+    void Set(int64_t);
+    // arrays
+    void Set(const std::vector<bool>&);
+    void Set(const std::vector<int32_t>&);
+    void Set(const std::vector<float>&);
+    void Set(const std::vector<double>&);
+    void Set(const std::vector<int64_t>&);
+    // raw / string
+    void Set(const std::vector<uint8_t>&, uint8_t type);
+    void Set(const std::string&);
+    void Set(const char*);
+
     void write(std::ofstream &output);
 
 	// json format

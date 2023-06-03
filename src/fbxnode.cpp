@@ -194,6 +194,11 @@ const std::vector<FBXNode> &FBXNode::getChildren() const
     return children;
 }
 
+std::vector<FBXProperty>& FBXNode::getProperties()
+{
+	return properties;
+}
+
 const std::vector<FBXProperty> &FBXNode::getProperties() const
 {
 	return properties;

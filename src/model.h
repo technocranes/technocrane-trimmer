@@ -76,8 +76,8 @@ namespace fbx
 
 		void AddChild(Model* pChild);
 
-		const int GetAnimationNodeCount() const;
-		const AnimationCurveNode* GetAnimationNode(int index) const;
+		int GetAnimationNodeCount() const;
+		AnimationCurveNode* GetAnimationNode(int index) const;
 
 		// find nodes by name or by typeId, connected to specified layer. with multilayer or multitake it could be more than one translation node
 

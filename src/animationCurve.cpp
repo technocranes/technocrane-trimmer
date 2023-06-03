@@ -62,6 +62,20 @@ struct AnimationCurveImpl : AnimationCurve
 	const float* getKeyValue() const override { return &m_Values[0]; }
 	const int* getKeyFlag() const override { return &m_Flags[0]; }
 
+	void SetKeyCount(const int count) override
+	{
+		m_Times.resize(count);
+		m_Values.resize(count);
+		m_Flags.resize(count);
+	}
+
+	void SetKey(int index, const OFBTime& time, const float value, const int flags) override
+	{
+		m_Times[index] = time.Get();
+		m_Values[index] = value;
+		m_Flags[index] = flags;
+	}
+
 	std::vector<i64>	m_Times;
 	std::vector<float>	m_Values;
 	std::vector<int>	m_Flags;
@@ -103,7 +117,7 @@ struct AnimationCurveImpl : AnimationCurve
 
 		if (flags && flags->getPropertiesCount() > 0)
 		{
-			const FBXProperty& prop = values->getProperties().at(0);
+			const FBXProperty& prop = flags->getProperties().at(0);
 			if (m_Values.size() == prop.GetCount())
 			{
 				m_Flags.resize(prop.GetCount());
@@ -124,6 +138,29 @@ struct AnimationCurveImpl : AnimationCurve
 		if (m_Times.size() != m_Values.size())
 		{
 			printf("Invalid animation curve\n");
+		}
+	}
+
+	void OnStore(const FBXDocument& _document, const FBXNode& _element) override
+	{
+		FBXNode* times = _document.FindNode("KeyTime", &_element);
+		FBXNode* values = _document.FindNode("KeyValueFloat", &_element);
+		FBXNode* flags = _document.FindNode("KeyAttrFlags", &_element);
+
+		if (times && times->getPropertiesCount() > 0)
+		{
+			FBXProperty& prop = times->getProperties().at(0);
+			prop.Set(m_Times);
+		}
+		if (values && values->getPropertiesCount() > 0)
+		{
+			FBXProperty& prop = values->getProperties().at(0);
+			prop.Set(m_Values);
+		}
+		if (flags && flags->getPropertiesCount() > 0)
+		{
+			FBXProperty& prop = flags->getProperties().at(0);
+			prop.Set(m_Flags);
 		}
 	}
 

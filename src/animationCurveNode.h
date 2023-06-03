@@ -39,8 +39,9 @@ namespace fbx
 
 		virtual AnimationLayer* getLayer() const = 0;
 
-		virtual int getCurveCount() const = 0;
-		virtual const AnimationCurve* getCurve(int index) const = 0;
+		virtual int GetCurveCount() const = 0;
+		virtual AnimationCurve* GetCurve(int index) = 0;
+		virtual const AnimationCurve* GetCurve(int index) const = 0;
 
 		virtual bool Evaluate(double* Data, const OFBTime pTime) const = 0;
 

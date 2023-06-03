@@ -115,8 +115,10 @@ namespace fbx
 			*/
 
 			void Retreive(const FBXDocument& _document, const FBXNode& _element);
+			void Store(const FBXDocument& _document, const FBXNode& _element);
 
 			virtual void OnRetreive(const FBXDocument& _document, const FBXNode& _element) = 0;
+			virtual void OnStore(const FBXDocument& _document, const FBXNode& _element) {}
 
 			virtual void OnDataConnectionNotify(fbx::ConnectionEvent, FBXObject* connectionObject, const Connection* connection) {}
 

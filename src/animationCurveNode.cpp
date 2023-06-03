@@ -52,15 +52,19 @@ namespace fbx
 			return m_Layer;
 		}
 
-		int getCurveCount() const override
+		int GetCurveCount() const override
 		{
 			return m_NumberOfCurves;
 		}
-		const AnimationCurve* getCurve(int index) const override
+		AnimationCurve* GetCurve(int index) override
 		{
 			return m_Curves[index].curve;
 		}
-		bool AttachCurve(const AnimationCurve* pCurve, const Connection* connection)
+		const AnimationCurve* GetCurve(int index) const override
+		{
+			return m_Curves[index].curve;
+		}
+		bool AttachCurve(AnimationCurve* pCurve, const Connection* connection)
 		{
 			bool lSuccess = false;
 			if (m_NumberOfCurves < 3)
@@ -143,7 +147,7 @@ namespace fbx
 
 		struct Curve
 		{
-			const AnimationCurve* curve = nullptr;
+			AnimationCurve* curve = nullptr;
 			const Connection* connection = nullptr;
 		};
 

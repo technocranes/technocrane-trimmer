@@ -7,6 +7,10 @@
 #include "fbximporter.h"
 #include "fbxexporter.h"
 #include "scene.h"
+#include "model.h"
+#include "animationCurve.h"
+#include "animationCurveNode.h"
+#include "fbxtime.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -243,9 +247,28 @@ EXTERN int load_file(uint8_t* buffer, size_t size) {
 
 		if (auto node = scene.FindModel("TDCamera"))
 		{
+			auto animNode = node->GetAnimationNode(0);
+			auto curveX = animNode->GetCurve(0);
+			auto curveY = animNode->GetCurve(1);
+			auto curveZ = animNode->GetCurve(2);
 
+			const int keyCount = static_cast<int>(packets.size());
+			curveX->SetKeyCount(keyCount);
+			curveY->SetKeyCount(keyCount);
+			curveZ->SetKeyCount(keyCount);
+			const int flags = 24840;
+			for (int i = 0; i < keyCount; ++i)
+			{
+				const auto& packet = packets[i];
+
+				fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+				curveX->SetKey(i, time, packet.x, flags);
+				curveY->SetKey(i, time, packet.y, flags);
+				curveZ->SetKey(i, time, packet.z, flags);
+			}
 		}
 		
+		scene.Store(&doc);
 
 		//
 

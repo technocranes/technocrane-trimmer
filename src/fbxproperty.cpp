@@ -252,6 +252,7 @@ FBXProperty::FBXProperty(const std::vector<int64_t> &a)
         values.push_back(v);
     }
 }
+
 // raw / string
 FBXProperty::FBXProperty(const std::vector<uint8_t> &a, uint8_t type)
 	: raw(a) 
@@ -507,6 +508,74 @@ size_t FBXProperty::GetCount() const
     default:
         throw std::string("Invalid property");
     }
+}
+
+// primitive values
+void FBXProperty::Set(int16_t a) { type = Type::SHORT; value.i16 = a; }
+void FBXProperty::Set(bool b) { type = Type::BOOLEAN; value.boolean = b; }
+void FBXProperty::Set(int32_t i) { type = Type::INTEGER; value.i32 = i; }
+void FBXProperty::Set(uint32_t i) { type = Type::INTEGER; value.i32 = static_cast<int>(i); }
+void FBXProperty::Set(float f) { type = Type::FLOAT; value.f32 = f; }
+void FBXProperty::Set(double d) { type = Type::DOUBLE; value.f64 = d; }
+void FBXProperty::Set(int64_t i) { type = Type::LONG; value.i64 = i; }
+// arrays
+void FBXProperty::Set(const std::vector<bool>& arr) 
+{ 
+    type = Type::ARRAY_BOOLEAN; 
+    values.resize(arr.size()); 
+    for (size_t i = 0; i < arr.size(); ++i)
+        values[i].boolean = arr[i];
+}
+void FBXProperty::Set(const std::vector<int32_t> &arr)
+{
+    type = Type::ARRAY_INT;
+    values.resize(arr.size());
+    for (size_t i = 0; i < arr.size(); ++i)
+        values[i].i32 = arr[i];
+}
+void FBXProperty::Set(const std::vector<float> &arr)
+{
+    type = Type::ARRAY_FLOAT;
+    values.resize(arr.size());
+    for (size_t i = 0; i < arr.size(); ++i)
+        values[i].f32 = arr[i];
+}
+void FBXProperty::Set(const std::vector<double> &arr)
+{
+    type = Type::ARRAY_DOUBLE;
+    values.resize(arr.size());
+    for (size_t i = 0; i < arr.size(); ++i)
+        values[i].f64 = arr[i];
+}
+void FBXProperty::Set(const std::vector<int64_t> &arr)
+{
+    type = Type::ARRAY_LONG;
+    values.resize(arr.size());
+    for (size_t i = 0; i < arr.size(); ++i)
+        values[i].i64 = arr[i];
+}
+// raw / string
+void FBXProperty::Set(const std::vector<uint8_t>& arr, uint8_t type)
+{
+    raw = arr;
+    if (type != 'R' && type != 'S') {
+        throw std::string("Bad argument to FBXProperty constructor");
+    }
+    this->type = static_cast<Type>(type);
+}
+void FBXProperty::Set(const std::string& text)
+{
+    for (uint8_t v : text) {
+        raw.push_back(v);
+    }
+    this->type = Type::STRING;
+}
+void FBXProperty::Set(const char* text)
+{
+    for (; *text != 0; text++) {
+        raw.push_back(*text);
+    }
+    this->type = Type::STRING;
 }
 
 } // namespace fbx

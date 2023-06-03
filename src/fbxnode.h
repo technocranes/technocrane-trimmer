@@ -73,6 +73,7 @@ public:
 		return properties.size();
 	}
     const std::vector<FBXNode> &getChildren() const;
+	std::vector<FBXProperty>& getProperties();
 	const std::vector<FBXProperty> &getProperties() const;
     const std::string &getName();
 	const char *getNamePtr() const {
