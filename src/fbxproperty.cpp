@@ -295,16 +295,62 @@ void FBXProperty::GetData(void* buffer) const
 {
     switch (type)
     {
-    case Type::SHORT: memcpy(buffer, &value.i16, sizeof(value.i16));
-    case Type::BOOLEAN: memcpy(buffer, &value.boolean, sizeof(bool));
-    case Type::INTEGER: memcpy(buffer, &value.i32, sizeof(value.i32));
-    case Type::FLOAT: memcpy(buffer, &value.f32, sizeof(value.f32));
-    case Type::DOUBLE: memcpy(buffer, &value.f64, sizeof(value.f64));
-    case Type::LONG: memcpy(buffer, &value.i64, sizeof(value.i64));
+    case Type::SHORT: memcpy(buffer, &value.i16, sizeof(value.i16)); break;
+    case Type::BOOLEAN: memcpy(buffer, &value.boolean, sizeof(bool)); break;
+    case Type::INTEGER: memcpy(buffer, &value.i32, sizeof(value.i32)); break;
+    case Type::FLOAT: memcpy(buffer, &value.f32, sizeof(value.f32)); break;
+    case Type::DOUBLE: memcpy(buffer, &value.f64, sizeof(value.f64)); break;
+    case Type::LONG: memcpy(buffer, &value.i64, sizeof(value.i64)); break;
+
+    case Type::ARRAY_BOOLEAN:
+        {
+            bool* ptr = reinterpret_cast<bool*>(buffer);
+            for (auto iter = begin(values); iter != end(values); ++iter)
+            {
+                *ptr = iter->boolean;
+                ptr += 1;
+            }
+        } break;
+    case Type::ARRAY_DOUBLE:
+        {
+            double* ptr = reinterpret_cast<double*>(buffer);
+            for (auto iter = begin(values); iter != end(values); ++iter)
+            {
+                *ptr = iter->f64;
+                ptr += 1;
+            }
+        } break;
+    case Type::ARRAY_FLOAT:
+        {
+            float* ptr = reinterpret_cast<float*>(buffer);
+            for (auto iter = begin(values); iter != end(values); ++iter)
+            {
+                *ptr = iter->f32;
+                ptr += 1;
+            }
+        } break;
+    case Type::ARRAY_INT:
+        {
+            int32_t* ptr = reinterpret_cast<int32_t*>(buffer);
+            for (auto iter = begin(values); iter != end(values); ++iter)
+            {
+                *ptr = iter->i32;
+                ptr += 1;
+            }
+        } break;
+    case Type::ARRAY_LONG:
+        {
+            int64_t* ptr = reinterpret_cast<int64_t*>(buffer);
+            for (auto iter = begin(values); iter != end(values); ++iter)
+            {
+                *ptr = iter->i64;
+                ptr += 1;
+            }
+        } break;
     }
 }
 
-string FBXProperty::to_string(bool skip_quotes) const
+string FBXProperty::to_string(bool skip_quotes, bool exit_on_zero_char) const
 {
     switch (type)
     {
@@ -326,6 +372,9 @@ string FBXProperty::to_string(bool skip_quotes) const
     {
         string s((skip_quotes) ? "" : "\"");
         for (uint8_t c : raw) {
+            if (c == '\0' && exit_on_zero_char)
+                break;
+
             if (c == '\\') s += "\\\\";
             else if (c >= 32 && c <= 126) s += c;
             else s = s + "\\u00" + base16Number(c);
@@ -431,6 +480,30 @@ uint32_t FBXProperty::GetBytesCount() const
 
     case Type::ARRAY_DOUBLE:
     case Type::ARRAY_LONG: return values.size() * 8 + 13;
+    default:
+        throw std::string("Invalid property");
+    }
+}
+
+size_t FBXProperty::GetCount() const
+{
+    switch (type)
+    {
+    case Type::BOOLEAN:
+    case Type::SHORT:
+    case Type::INTEGER:
+    case Type::FLOAT:
+    case Type::DOUBLE:
+    case Type::LONG: return 1;
+
+    case Type::STRING2:
+    case Type::STRING: return raw.size();
+
+    case Type::ARRAY_BOOLEAN:
+    case Type::ARRAY_FLOAT:
+    case Type::ARRAY_INT:
+    case Type::ARRAY_DOUBLE:
+    case Type::ARRAY_LONG: return values.size();
     default:
         throw std::string("Invalid property");
     }

@@ -19,6 +19,12 @@ namespace fbx {
 		last_uid = 999999;
 	}
 
+	FBXDocument::~FBXDocument()
+	{
+		m_objectMap.clear();
+	}
+
+
 	void FBXDocument::createHeader()
 	{
 		FBXNode headerExtension("FBXHeaderExtension");
@@ -324,7 +330,7 @@ namespace fbx {
 		cout << "\n  ]\n}" << endl;
 	}
 
-	FBXNode* FBXDocument::findNode(const char* name, const FBXNode* pParent)
+	FBXNode* FBXDocument::FindNode(const char* name, const FBXNode* pParent) const
 	{
 		const FBXNode* lParent = (nullptr == pParent) ? &m_root : pParent;
 		FBXNode* lResult = nullptr;
@@ -333,7 +339,7 @@ namespace fbx {
 
 		for (auto iter = begin(children); iter != end(children); ++iter)
 		{
-			lResult = findNode(name, &(*iter));
+			lResult = FindNode(name, &(*iter));
 
 			if (nullptr != lResult)
 				break;
@@ -355,6 +361,12 @@ namespace fbx {
 		if (node.getPropertiesCount() > 0 && node.getProperties().at(0).GetType() == FBXProperty::LONG)
 		{
 			const u64 id{ static_cast<u64>(node.getProperties().at(0).AsLong()) };
+
+			if (m_objectMap.find(id) != end(m_objectMap))
+			{
+				printf("already exist!\n");
+			}
+
 			m_objectMap[id] = { &node, nullptr };
 		}
 
@@ -439,9 +451,10 @@ namespace fbx {
 
 	bool FBXDocument::ParseConnections()
 	{
+		constexpr const char* CONNECTIONS_NAME{ "Connections" };
 		m_connections.clear();
 
-		if (const FBXNode* connections = findNode("Connections", &m_root))
+		if (const FBXNode* connections = FindNode(CONNECTIONS_NAME, &m_root))
 		{
 			for (auto& child : connections->getChildren())
 			{
@@ -455,7 +468,9 @@ namespace fbx {
 
 	bool FBXDocument::ParseObjects()
 	{
-		FBXNode* objs = findNode("Objects", &m_root);
+		constexpr const char* OBJECTS_NAME{ "Objects" };
+
+		FBXNode* objs = FindNode(OBJECTS_NAME, &m_root);
 		if (!objs) return true;
 
 		// all objects map
@@ -463,46 +478,10 @@ namespace fbx {
 		m_objectMap.clear();
 		m_objectMap[0] = { &m_root, nullptr };
 
-		for (auto& child : m_root.getChildren())
+		for (auto& child : objs->getChildren())
 		{
 			PopulateObjectMap(child);
 		}
-
-		// prepare every supported type of objects
-
-		for (auto& iter : m_objectMap)
-		{
-			if (iter.first == 0)
-				continue;
-			
-			const char* nodeId{ iter.second.element->getNamePtr() };
-
-			if (strcmp(nodeId, "Geometry"))
-			{
-				// TODO: parse geometry
-			}
-			else if (strcmp(nodeId, "AnimationCurve"))
-			{
-				// TODO: parse animation curve
-				printf("animation curve found!\n");
-			}
-			else if (strcmp(nodeId, "Model"))
-			{
-				// get model subclass
-				const std::string sub_class = iter.second.element->getProperties().at(2).to_string();
-
-				if (strcmp(sub_class.c_str(), "Mesh"))
-				{
-					// TODO: model with mesh
-				}
-				else if (strcmp(sub_class.c_str(), "Camera"))
-				{
-					// TODO: camera model
-					printf("camera found!\n");
-				}
-			}
-		}
-	
 
 		return true;
 	}

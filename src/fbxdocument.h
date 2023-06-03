@@ -7,34 +7,23 @@
 
 namespace fbx {
 
-	struct Connection
-	{
-		enum Type
-		{
-			OBJECT_OBJECT,
-			OBJECT_PROPERTY,
-			PROPERTY_PROPERTY
-		};
-
-		Type type;
-		u64 from;
-		u64 to;
-		// TODO: is that safe enough!
-		const FBXProperty* srcProperty;
-		const FBXProperty* property;
-	};
+	class Scene;
 
 	struct ObjectPair
 	{
 		const FBXNode* element; // this is a raw file data element
-		FBXNodeView* object;		// this is unpacked functional element
+		FBXObject* object;		// this is unpacked functional element
 	};
 
 class FBXDocument
 {
 public:
     FBXDocument();
-    
+	~FBXDocument();
+
+public:
+	// this is a raw document operations
+
 	// create some basic document nodes
     void createHeader();
 	void createGlobalSettings();
@@ -42,7 +31,7 @@ public:
 	void createReferences();
 	void createDefinitions();
 
-	FBXNode		*findNode(const char *name, const FBXNode *parent);
+	FBXNode* FindNode(const char *name, const FBXNode *parent) const;
 
 	FBXNode		&getRoot() const
 	{
@@ -60,8 +49,11 @@ public:
 
 	int64_t generate_uid() { return ++last_uid; }
 
-	bool ParseObjects();
 	bool ParseConnections();
+	bool ParseObjects();
+
+public:
+	
 
 protected:
     std::uint32_t version;
@@ -71,6 +63,7 @@ protected:
 
 	std::unordered_map<uint64_t, ObjectPair> m_objectMap;
 	std::vector<Connection> m_connections;
+	friend class Scene;
 
 	void PopulateObjectMap(const FBXNode& root);
 	void PopulateConnections(const FBXNode& root);

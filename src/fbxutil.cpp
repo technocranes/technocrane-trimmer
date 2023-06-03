@@ -1,5 +1,6 @@
 #include "fbxutil.h"
 
+
 namespace fbx {
 
 namespace {
@@ -285,6 +286,17 @@ void Writer::writeBlockSentinelData()
 {
 	for (int i = 0; i < 13; ++i)
 		putc('\0');
+}
+
+double fbxTimeToSeconds(i64 value)
+{
+    return double(value) / 46186158000L;
+}
+
+
+i64 secondsToFbxTime(double value)
+{
+    return i64(value * 46186158000L);
 }
 
 } // namespace fbx

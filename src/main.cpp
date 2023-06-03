@@ -6,6 +6,7 @@
 #include "fbxdocument.h"
 #include "fbximporter.h"
 #include "fbxexporter.h"
+#include "scene.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -230,10 +231,21 @@ EXTERN int load_file(uint8_t* buffer, size_t size) {
 	{
 		lImporter.Import(doc);
 
+		// prepare scene data
+
+		doc.ParseConnections();
+		doc.ParseObjects();
+
 		// modify keyframes
 		
-		doc.ParseObjects();
-		doc.ParseConnections();
+		fbx::Scene scene;
+		scene.Retrive(&doc);
+
+		if (auto node = scene.FindModel("TDCamera"))
+		{
+
+		}
+		
 
 		//
 

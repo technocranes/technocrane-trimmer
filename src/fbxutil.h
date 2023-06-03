@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include "fbxtypes.h"
 
 namespace fbx {
 
@@ -16,6 +17,11 @@ namespace fbx {
 #define		FBX_SCENEINFO_VERSION	100
 #define		FBX_TEMPLATES_VERSION	100
 
+#define ANIMATIONNODE_TYPENAME_TRANSLATION	"Lcl Translation"
+#define ANIMATIONNODE_TYPENAME_ROTATION		"Lcl Rotation"
+#define ANIMATIONNODE_TYPENAME_SCALING		"Lcl Scaling"
+#define ANIMATIONNODE_TYPENAME_VISIBILITY	"Visibility"
+#define ANIMATIONNODE_TYPENAME_FIELDOFVIEW	"Field Of View"
 
     // WARNING:
     // this assumes that float is 32bit and double is 64bit
@@ -69,6 +75,13 @@ namespace fbx {
         void putc(uint8_t);
         std::ofstream *ofstream;
     };
+
+
+    // math
+
+    double fbxTimeToSeconds(i64 value);
+
+    i64 secondsToFbxTime(double value);
 }
 
 #endif // FBXUTIL_H

@@ -65,7 +65,7 @@ public:
     void write(std::ofstream &output);
 
 	// json format
-    std::string to_string(bool skip_quotes=false) const;
+    std::string to_string(bool skip_quotes=false, bool exit_on_zero_char=false) const;
 	// fbx ascii format
 	std::string to_ascii(uint32_t tab_offset) const;
     
@@ -81,6 +81,7 @@ public:
     
     //!< number of bytes required for the property data
     uint32_t GetBytesCount() const;
+    size_t GetCount() const;
 private:
     Type type;
     FBXPropertyValue value;
