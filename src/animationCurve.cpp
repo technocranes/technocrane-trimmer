@@ -6,8 +6,8 @@ using namespace fbx;
 
 struct AnimationCurveImpl : AnimationCurve
 {
-	AnimationCurveImpl()
-		: AnimationCurve()
+	AnimationCurveImpl(int64_t id)
+		: AnimationCurve(id)
 	{
 		m_LastEvalTime = OFBTime::MinusInfinity;
 		m_LastEvalValue = 0.0f;
@@ -66,14 +66,14 @@ struct AnimationCurveImpl : AnimationCurve
 	{
 		m_Times.resize(count);
 		m_Values.resize(count);
-		m_Flags.resize(count);
+		//m_Flags.resize(count);
 	}
 
 	void SetKey(int index, const OFBTime& time, const float value, const int flags) override
 	{
 		m_Times[index] = time.Get();
 		m_Values[index] = value;
-		m_Flags[index] = flags;
+		//m_Flags[index] = flags;
 	}
 
 	std::vector<i64>	m_Times;
@@ -127,11 +127,11 @@ struct AnimationCurveImpl : AnimationCurve
 			{
 				int value = 0;
 				prop.GetData(&value);
-				m_Flags.resize(m_Values.size(), value);
+				m_Flags.resize(1, value);
 			}
 			else
 			{
-				printf("Invalid animation curve, values property!\n");
+				printf("Invalid animation curve, flags property!\n");
 			}
 		}
 
@@ -141,40 +141,39 @@ struct AnimationCurveImpl : AnimationCurve
 		}
 	}
 
-	void OnStore(const FBXDocument& _document, const FBXNode& _element) override
+	void OnStore(FBXDocument& document, FBXNode& element) override
 	{
-		FBXNode* times = _document.FindNode("KeyTime", &_element);
-		FBXNode* values = _document.FindNode("KeyValueFloat", &_element);
-		FBXNode* flags = _document.FindNode("KeyAttrFlags", &_element);
+		element.Clear();
 
-		if (times && times->getPropertiesCount() > 0)
-		{
-			FBXProperty& prop = times->getProperties().at(0);
-			prop.Set(m_Times);
-		}
-		if (values && values->getPropertiesCount() > 0)
-		{
-			FBXProperty& prop = values->getProperties().at(0);
-			prop.Set(m_Values);
-		}
-		if (flags && flags->getPropertiesCount() > 0)
-		{
-			FBXProperty& prop = flags->getProperties().at(0);
-			prop.Set(m_Flags);
-		}
+		element.addProperty(m_Id);
+		element.addProperty("AnimCurve::");
+		element.addProperty("");
+
+		element.addPropertyNode("Default", 0.0f);
+		element.addPropertyNode("KeyVer", 4009);
+		element.addPropertyNode("KeyTime", m_Times);
+		element.addPropertyNode("KeyValueFloat", m_Values);
+
+		// ; KeyAttrFlags: Cubic | TangeantAuto 264
+		// ;KeyAttrFlags: Linear 260
+		element.addPropertyNode("KeyAttrFlags", std::vector<int32_t>(1, 260));
+		
+		// ;KeyAttrDataFloat: RightAuto:0, NextLeftAuto:0
+		element.addPropertyNode("KeyAttrDataFloat", std::vector<int32_t>({ 0, 0, 218434821, 0 }));
+		element.addPropertyNode("KeyAttrRefCount", std::vector<int32_t>(1, static_cast<int32_t>(m_Values.size())));
 	}
 
 private:
 	AnimationCurveNode* m_Owner{ nullptr };
 };
 
-AnimationCurve::AnimationCurve()
-	: FBXObject()
+AnimationCurve::AnimationCurve(int64_t id)
+	: FBXObject(id)
 {}
 
 
-AnimationCurve* AnimationCurve::Create()
+AnimationCurve* AnimationCurve::Create(int64_t id)
 {
-	AnimationCurveImpl* curve = new AnimationCurveImpl();
+	AnimationCurveImpl* curve = new AnimationCurveImpl(id);
 	return curve;
 }

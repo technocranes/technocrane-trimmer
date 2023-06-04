@@ -15,7 +15,7 @@ namespace fbx
 	{
 	protected:
 		//! a constructor
-		Model();
+		Model(int64_t id);
 
 	public:
 

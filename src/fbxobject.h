@@ -69,7 +69,8 @@ namespace fbx
 			virtual Type GetType() const = 0;
 
 			
-			FBXObject()
+			FBXObject(int64_t id)
+				: m_Id(id)
 			{}
 
 			virtual ~FBXObject() {}
@@ -115,16 +116,17 @@ namespace fbx
 			*/
 
 			void Retreive(const FBXDocument& _document, const FBXNode& _element);
-			void Store(const FBXDocument& _document, const FBXNode& _element);
+			void Store(FBXDocument& _document, FBXNode& _element);
 
 			virtual void OnRetreive(const FBXDocument& _document, const FBXNode& _element) = 0;
-			virtual void OnStore(const FBXDocument& _document, const FBXNode& _element) {}
+			virtual void OnStore(FBXDocument& _document, FBXNode& _element) {}
 
 			virtual void OnDataConnectionNotify(fbx::ConnectionEvent, FBXObject* connectionObject, const Connection* connection) {}
 
 		protected:
 
-			bool m_isNode;
+			bool m_isNode{ true };
+			int64_t m_Id{ 0 };
 			char m_Name[128]{ 0 };
 
 

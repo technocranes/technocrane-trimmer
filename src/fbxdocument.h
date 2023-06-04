@@ -61,11 +61,11 @@ protected:
 
 	FBXNode			m_root;
 
-	std::unordered_map<uint64_t, ObjectPair> m_objectMap;
+	std::unordered_map<i64, ObjectPair> m_objectMap;
 	std::vector<Connection> m_connections;
 	friend class Scene;
 
-	void PopulateObjectMap(const FBXNode& root);
+	void PopulateObjectMap(FBXNode& root);
 	void PopulateConnections(const FBXNode& root);
 };
 

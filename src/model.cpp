@@ -4,8 +4,8 @@
 using namespace fbx;
 
 
-Model::Model()
-	: FBXObject()
+Model::Model(int64_t id)
+	: FBXObject(id)
 {
 }
 
@@ -15,6 +15,12 @@ int Model::GetAnimationNodeCount() const
 }
 AnimationCurveNode* Model::GetAnimationNode(int index) const
 {
+	if (index < 0 || index >= GetAnimationNodeCount())
+	{
+		printf("model animation node is not found under the given index %d\n", index);
+		return nullptr;
+	}
+
 	return m_AnimationNodes[index];
 }
 

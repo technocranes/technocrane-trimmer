@@ -7,7 +7,7 @@ using namespace fbx;
 
 ///
 
-#define _BLOCK_SENTINEL_LENGTH		13
+#define _BLOCK_SENTINEL_LENGTH		25 // 13 for version < 7.5
 
 /////////////////////////////////////////////////////////////////////////////////
 //
@@ -46,8 +46,8 @@ void writerFooter2(Writer &writer, int version)
 	for (int i = 0; i < 4; ++i)
 		writer.write((uint8_t)0x00);
 
-	fpos_t ofs = writer.tell();
-	size_t pad = 16 - (ofs % 16);
+	size_t ofs = static_cast<size_t>(writer.tell());
+	size_t pad = 16 - (ofs % (size_t)16);
 
 	for (size_t i = 0; i < pad; ++i)
 		writer.write((uint8_t)'\x00');
@@ -64,15 +64,15 @@ void writerFooter2(Writer &writer, int version)
 ///////////////////////////////////////////////////////////////////////////////////
 //
 Exporter::Exporter()
-	: mIsBinary(false)
+	: m_IsBinary(false)
 {
-	mStreamBuffer = nullptr;
+	m_StreamBuffer = nullptr;
 }
 
 Exporter::Exporter(bool isBinary)
-	: mIsBinary(isBinary)
+	: m_IsBinary(isBinary)
 {
-	mStreamBuffer = nullptr;
+	m_StreamBuffer = nullptr;
 }
 
 //! a destructor
@@ -84,54 +84,94 @@ Exporter::~Exporter()
 //
 bool Exporter::Initialize(const char *fname, bool isBinary)
 {
-	mFilename = fname;
-	mIsBinary = isBinary;
+	m_Filename = fname;
+	m_IsBinary = isBinary;
 	
-	bool lSuccess = true;
-
-	try
+	// buffer
+	if (nullptr == m_StreamBuffer)
 	{
-		// buffer
-		if (nullptr == mStreamBuffer)
-			mStreamBuffer = new char[EXPORTER_BUFFER_SIZE];
+		m_StreamBuffer = new char[EXPORTER_BUFFER_SIZE];
+		memset(m_StreamBuffer, 0, sizeof(char) * EXPORTER_BUFFER_SIZE);
+	}
 		
-		mFile.rdbuf()->pubsetbuf(mStreamBuffer, EXPORTER_BUFFER_SIZE);
+	if (!m_Filename.empty())
+	{
+		m_File.rdbuf()->pubsetbuf(m_StreamBuffer, EXPORTER_BUFFER_SIZE);
 
 		std::ios::openmode	openmode = std::ios::out;
-		if (true == mIsBinary)
+		if (true == m_IsBinary)
 			openmode |= std::ios::binary;
 
-		mFile.open(mFilename.c_str(), openmode);
-		
-		if (false == mFile.is_open())
-			throw std::exception(mFilename.c_str());
+		m_File.open(m_Filename.c_str(), openmode);
 
-		lSuccess = true;
-	}
-	catch (const std::exception &e)
-	{
-		lSuccess = false;
-		printf("Error exporting a file: %s\n", e.what());
+		if (false == m_File.is_open())
+		{
+			printf("Error exporting a file: %s\n", m_Filename.c_str());
+			return false;
+		}
 	}
 
-	return lSuccess;
+	return true;
 }
 
 //
 bool Exporter::Export(const FBXDocument &document)
 {
-	return (mIsBinary) ? WriteBinary(document) : WriteASCII(document);
+	if (m_IsBinary) 
+	{
+		if (m_Filename.empty())
+		{
+			struct membuf : std::streambuf // derive because std::streambuf constructor is protected
+			{
+				membuf(char* p, size_t size)
+				{
+					setp(p, p + size); // set start end end pointers
+				}
+				size_t written() { return pptr() - pbase(); } // how many bytes were really written?
+			};
+
+			membuf sbuf(m_StreamBuffer, EXPORTER_BUFFER_SIZE); // our buffer object
+			std::ostream out(&sbuf);   // stream using our buffer
+
+			return WriteBinary(document, &out);
+		}
+		else
+		{
+			return WriteBinary(document, &m_File);
+		}
+	} 
+	else
+	{
+		if (m_Filename.empty())
+		{
+			struct membuf : std::streambuf // derive because std::streambuf constructor is protected
+			{
+				membuf(char* p, size_t size)
+				{
+					setp(p, p + size); // set start end end pointers
+				}
+				size_t written() { return pptr() - pbase(); } // how many bytes were really written?
+			};
+
+			membuf sbuf(m_StreamBuffer, EXPORTER_BUFFER_SIZE); // our buffer object
+			std::ostream out(&sbuf);   // stream using our buffer
+
+			return WriteASCII(document, out);
+		}
+		else
+		{
+			return WriteASCII(document, m_File);
+		}
+	}
 }
 
-bool Exporter::WriteBinary(const FBXDocument &document)
+bool Exporter::WriteBinary(const FBXDocument &document, std::ostream* stream)
 {
 	bool lSuccess = true;
 
-	//version = 7400;
-
 	uint32_t version = document.getVersion();
 
-	Writer writer(&mFile);
+	Writer writer(stream);
 	writer.write("Kaydara FBX Binary  ");
 	writer.write((uint8_t)0);
 	writer.write((uint8_t)0x1A);
@@ -188,7 +228,7 @@ bool Exporter::WriteBinary(const FBXDocument &document)
 
 	FBXNode *pRoot = document.getRootPtr();
 
-	ExporterNodeBinary exportNode(this, pRoot);
+	ExporterNodeBinary exportNode(this, pRoot, stream, version);
 	uint32_t ret = exportNode.WriteChildren(offset, false);
 	lSuccess = (ret > 0);
 
@@ -197,16 +237,16 @@ bool Exporter::WriteBinary(const FBXDocument &document)
 
 	return lSuccess;
 }
-bool Exporter::WriteASCII(const FBXDocument &document)
+bool Exporter::WriteASCII(const FBXDocument &document, std::ostream& stream)
 {
-	mFile << "; FBX 7.4.0 project file" << std::endl;
-	mFile << "; Exported by Neill3d Exporter 2018" << std::endl;
-	mFile << "; -----------------------------------" << std::endl;
-	mFile << std::endl;
+	stream << "; FBX 7.4.0 project file" << std::endl;
+	stream << "; Exported by Neill3d Exporter 2018" << std::endl;
+	stream << "; -----------------------------------" << std::endl;
+	stream << std::endl;
 
 	FBXNode *pRoot = document.getRootPtr();
 
-	ExporterNodeAscii exportNode(this, pRoot);
+	ExporterNodeAscii exportNode(this, pRoot, &stream, document.getVersion());
 	uint32_t ret = exportNode.WriteChildren(0, false);
 
 	return (ret > 0);
@@ -214,13 +254,13 @@ bool Exporter::WriteASCII(const FBXDocument &document)
 
 bool Exporter::Destroy()
 {
-	if (mFile.is_open())
-		mFile.close();
+	if (m_File.is_open())
+		m_File.close();
 
-	if (nullptr != mStreamBuffer)
+	if (nullptr != m_StreamBuffer)
 	{
-		delete[] mStreamBuffer;
-		mStreamBuffer = nullptr;
+		delete[] m_StreamBuffer;
+		m_StreamBuffer = nullptr;
 	}
 	return true;
 }
@@ -231,7 +271,7 @@ bool Exporter::Destroy()
 uint32_t ExporterNodeBinary::getBytes(FBXNode *pNode, bool is_last)
 {
 	// 3 uints + len + idname
-	uint32_t bytes = 13 + pNode->getName().length();
+	uint32_t bytes = _BLOCK_SENTINEL_LENGTH + pNode->getName().length();
 
 	auto &properties = pNode->getProperties();
 	for (auto iter = begin(properties); iter != end(properties); ++iter)
@@ -285,9 +325,9 @@ uint32_t ExporterNodeBinary::getBytesProperties(FBXNode *pNode)
 
 uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 {
-	Writer writer(&mExporter->GetStream());
+	Writer writer(m_Stream);
 
-	auto pos = static_cast<uint32_t>(mExporter->GetStream().tellp());
+	auto pos = static_cast<uint32_t>(m_Stream->tellp());
 	if (pos != start_offset)
 	{
 		printf("scope lenth not reached, something is wrong (%zu)\n", (start_offset - pos));
@@ -295,19 +335,35 @@ uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 
 	uint32_t propertyListLength = getBytesProperties(mNode);
 
+	bool isVersion75 = m_Version >= FBX_VERSION_LONG;
+
+	const int versionNullData{ (isVersion75) ? 25 : 13 };	// 13 for version < 7.5, otherwise 25
+
 	// 3 uint + 1 len and id
-	uint32_t bytes = 13 + mNode->getName().length();
+	uint32_t bytes = versionNullData + mNode->getName().length();
 	bytes += propertyListLength;
 	bytes += getBytesChildren(mNode, is_last);
 
 	//if(bytes != getBytes(is_last)) throw std::string("bytes != getBytes()");
 
 	uint32_t endOffset = start_offset + bytes;
-	writer.write(endOffset); // endOffset
-	writer.write((uint32_t)mNode->getPropertiesCount()); // numProperties
-	writer.write(propertyListLength); // propertyListLength
-	writer.write((uint8_t)mNode->getName().length());
-	writer.write(mNode->getNamePtr());
+	if (isVersion75)
+	{
+		writer.write(static_cast<uint64_t>(endOffset)); // endOffset
+		writer.write(static_cast<uint64_t>(mNode->getPropertiesCount())); // numProperties
+		writer.write(static_cast<uint64_t>(propertyListLength)); // propertyListLength
+		writer.write((uint8_t)mNode->getName().length());
+		writer.write(mNode->getNamePtr());
+	}
+	else
+	{
+		writer.write(endOffset); // endOffset
+		writer.write((uint32_t)mNode->getPropertiesCount()); // numProperties
+		writer.write(propertyListLength); // propertyListLength
+		writer.write((uint8_t)mNode->getName().length());
+		writer.write(mNode->getNamePtr());
+	}
+	
 
 	//std::cout << "so: " << start_offset
 	//          << "\tbytes: " << bytes
@@ -316,18 +372,18 @@ uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 	//          << "\tnameLen: " << name.length()
 	//          << "\tname: " << name << "\n";
 
-	bytes = 13 + mNode->getName().length() + propertyListLength;
+	bytes = versionNullData + mNode->getName().length() + propertyListLength;
 
 	auto &properties = mNode->getProperties();
 	for (auto iter = begin(properties); iter != end(properties); ++iter)
 	{
 		FBXProperty *prop = (FBXProperty*) &(*iter);
-		prop->write(mExporter->GetStream());
+		prop->write(m_Stream);
 	}
 
 	bytes += WriteChildren(start_offset + bytes, is_last);
 
-	pos = static_cast<uint32_t>(mExporter->GetStream().tellp());
+	pos = static_cast<uint32_t>(m_Stream->tellp());
 	if (pos != endOffset)
 	{
 		printf("scope lenth not reached, something is wrong (%zu)\n", (endOffset - pos));
@@ -337,7 +393,7 @@ uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 
 uint32_t ExporterNodeBinary::WriteChildren(uint32_t start_offset, bool is_last)
 {
-	Writer writer(&mExporter->GetStream());
+	Writer writer(m_Stream);
 	uint32_t bytes = 0;
 
 	if (mNode->getChildrenCount() > 0)
@@ -347,11 +403,11 @@ uint32_t ExporterNodeBinary::WriteChildren(uint32_t start_offset, bool is_last)
 		auto lastIter = begin(children) + (children.size() - 1);
 		for (auto iter = begin(children); iter != end(children); ++iter)
 		{
-			ExporterNodeBinary childNode(mExporter, (FBXNode*) &(*iter));
+			ExporterNodeBinary childNode(mExporter, (FBXNode*) &(*iter), m_Stream, m_Version);
 			bytes += childNode.Write(start_offset + bytes, (lastIter == iter));
 
 		}
-		writer.writeBlockSentinelData();
+		writer.writeBlockSentinelData(_BLOCK_SENTINEL_LENGTH);
 		bytes += _BLOCK_SENTINEL_LENGTH;
 	}
 	else
@@ -360,7 +416,7 @@ uint32_t ExporterNodeBinary::WriteChildren(uint32_t start_offset, bool is_last)
 		{
 			if (false == is_last)
 			{
-				writer.writeBlockSentinelData();
+				writer.writeBlockSentinelData(_BLOCK_SENTINEL_LENGTH);
 				bytes += _BLOCK_SENTINEL_LENGTH;
 			}
 		}
@@ -389,7 +445,7 @@ uint32_t ExporterNodeAscii::Write(uint32_t start_offset, bool is_last)
 {
 	bool lSuccess = true;
 
-	std::ofstream &stream = mExporter->GetStream();
+	std::ostream& stream = *m_Stream;
 
 	for (uint32_t i = 0; i < start_offset; ++i)
 		stream << '\t';
@@ -444,7 +500,7 @@ uint32_t ExporterNodeAscii::WriteChildren(uint32_t start_offset, bool is_last)
 	auto last = begin(children) + (children.size() - 1);
 	for (auto iter = begin(children); iter != end(children); ++iter)
 	{
-		ExporterNodeAscii exportNode( mExporter, (FBXNode*) &(*iter));
+		ExporterNodeAscii exportNode( mExporter, (FBXNode*) &(*iter), m_Stream, m_Version);
 
 		if (false == exportNode.Write(start_offset, (iter == last)) )
 		{

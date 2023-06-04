@@ -144,9 +144,9 @@ FBXProperty::FBXProperty(std::ifstream &input)
     }
 }
 
-void FBXProperty::write(std::ofstream &output)
+void FBXProperty::write(std::ostream* output)
 {
-    Writer writer(&output);
+    Writer writer(output);
 
     writer.write(type);
 
@@ -214,42 +214,49 @@ FBXProperty::FBXProperty(float a) { type = Type::FLOAT; value.f32 = a; }
 FBXProperty::FBXProperty(double a) { type = Type::DOUBLE; value.f64 = a; }
 FBXProperty::FBXProperty(int64_t a) { type = Type::LONG; value.i64 = a; }
 // arrays
-FBXProperty::FBXProperty(const std::vector<bool> &a) : type(Type::ARRAY_BOOLEAN), values(a.size()) {
-    for(auto el : a) {
-        FBXPropertyValue v;
-        v.boolean = el;
-        values.push_back(v);
+FBXProperty::FBXProperty(const std::vector<bool> &a) 
+    : type(Type::ARRAY_BOOLEAN)
+    , values(a.size()) 
+{
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        values[i].boolean = a[i];
     }
 }
-FBXProperty::FBXProperty(const std::vector<int32_t> &a) : type(Type::ARRAY_INT), values(a.size()) {
-    for(auto el : a) {
-        FBXPropertyValue v;
-        v.i32 = el;
-        values.push_back(v);
+FBXProperty::FBXProperty(const std::vector<int32_t> &a) 
+    : type(Type::ARRAY_INT)
+    , values(a.size()) 
+{
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        values[i].i32 = a[i];
     }
 }
-FBXProperty::FBXProperty(const std::vector<float> &a) : type(Type::ARRAY_FLOAT), values(a.size()) {
-    for(auto el : a) {
-        FBXPropertyValue v;
-        v.f32 = el;
-        values.push_back(v);
+FBXProperty::FBXProperty(const std::vector<float> &a) 
+    : type(Type::ARRAY_FLOAT)
+    , values(a.size()) 
+{
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        values[i].f32 = a[i];
     }
 }
-FBXProperty::FBXProperty(const std::vector<double> &a) : type(Type::ARRAY_DOUBLE), values(a.size()) {
-    for(auto el : a) {
-        FBXPropertyValue v;
-        v.f64 = el;
-        values.push_back(v);
+FBXProperty::FBXProperty(const std::vector<double> &a) 
+    : type(Type::ARRAY_DOUBLE)
+    , values(a.size()) 
+{
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        values[i].f64 = a[i];
     }
 }
 FBXProperty::FBXProperty(const std::vector<int64_t> &a) 
-	: type(Type::ARRAY_LONG), 
-	values(a.size()) 
+	: type(Type::ARRAY_LONG)
+    , values(a.size()) 
 {
-    for(auto el : a) {
-        FBXPropertyValue v;
-        v.i64 = el;
-        values.push_back(v);
+    for (size_t i = 0; i < a.size(); ++i) 
+    {
+        values[i].i64 = a[i];
     }
 }
 

@@ -9,10 +9,9 @@ namespace fbx
 {
 	struct AnimationCurveNodeImpl : AnimationCurveNode
 	{
-		AnimationCurveNodeImpl()
-			: AnimationCurveNode()
-		{
-		}
+		AnimationCurveNodeImpl(int64_t id)
+			: AnimationCurveNode(id)
+		{}
 
 
 		const FBXObject* GetOwner() const override
@@ -155,13 +154,13 @@ namespace fbx
 		Curve m_Curves[3];
 	};
 
-	AnimationCurveNode::AnimationCurveNode()
-		: FBXObject()
+	AnimationCurveNode::AnimationCurveNode(int64_t id)
+		: FBXObject(id)
 	{}
 
-	AnimationCurveNode* AnimationCurveNode::Create()
+	AnimationCurveNode* AnimationCurveNode::Create(int64_t id)
 	{
-		return new AnimationCurveNodeImpl();
+		return new AnimationCurveNodeImpl(id);
 	}
 
 }

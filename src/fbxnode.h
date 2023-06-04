@@ -65,6 +65,7 @@ public:
 	void addP70Compound(const char *name, const char *type, const char *str1, const char *str2);
 
     void addChild(FBXNode &child);
+	void addChild(FBXNode&& child);
 
 	const size_t getChildrenCount() const {
 		return children.size();
@@ -72,6 +73,7 @@ public:
 	const size_t getPropertiesCount() const {
 		return properties.size();
 	}
+	std::vector<FBXNode>& getChildren();
     const std::vector<FBXNode> &getChildren() const;
 	std::vector<FBXProperty>& getProperties();
 	const std::vector<FBXProperty> &getProperties() const;
@@ -80,11 +82,16 @@ public:
 		return name.c_str();
 	}
 
+	void Clear();
 	void removeProperties(bool recursive);
+
 private:
-    std::vector<FBXNode> children;
+	int64_t m_Id;
+	std::vector<FBXNode> children;
     std::vector<FBXProperty> properties;
     std::string name;	//!< identifier of a fbx element node
+
+	friend class FBXDocument;
 };
 
 } // namespace fbx

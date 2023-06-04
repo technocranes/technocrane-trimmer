@@ -56,11 +56,13 @@ bool Scene::Store(FBXDocument* document)
 	{
 		if (iter.first == 0)
 			continue;
-
+		// TODO:
+		
 		if (iter.second.object == nullptr)
 			continue;
 
-		iter.second.object->Store(*document, *iter.second.element);
+		iter.second.object->Store(*document, const_cast<fbx::FBXNode&>(*iter.second.element));
+		
 	}
 	return true;
 }
@@ -68,6 +70,8 @@ bool Scene::Store(FBXDocument* document)
 bool Scene::Retrive(FBXDocument* document)
 {
 	// prepare every supported type of objects
+
+	//std::unordered_map<int64_t, FBXObject*>	sceneObjects;
 
 	for (auto& iter : document->m_objectMap)
 	{
@@ -83,17 +87,22 @@ bool Scene::Retrive(FBXDocument* document)
 		else if (strcmp(nodeId, AnimationCurve::GetClassName()) == 0)
 		{
 			printf("animation curve found!\n");
-			AnimationCurve* newCurve = AnimationCurve::Create();
+			AnimationCurve* newCurve = AnimationCurve::Create(iter.first);
 			newCurve->Retreive(*document, *iter.second.element);
 			m_curves.push_back(newCurve);
+			
+			//sceneObjects.emplace(iter.first, newCurve);
+			
 			iter.second.object = newCurve;
 		}
 		else if (strcmp(nodeId, AnimationCurveNode::GetClassName()) == 0)
 		{
-			AnimationCurveNode* curveNode = AnimationCurveNode::Create();
+			AnimationCurveNode* curveNode = AnimationCurveNode::Create(iter.first);
 			curveNode->Retreive(*document, *iter.second.element);
 			m_curveNodes.push_back(curveNode);
 			iter.second.object = curveNode;
+			//document->m_objectMap[iter.first] = { iter.second.element, curveNode };
+			//sceneObjects.emplace(iter.first, curveNode);
 		}
 		else if (strcmp(nodeId, Model::GetClassName()) == 0)
 		{
@@ -109,24 +118,40 @@ bool Scene::Retrive(FBXDocument* document)
 				// TODO: camera model
 				printf("camera found!\n");
 
-				Camera* camera = Camera::Create();
+				Camera* camera = Camera::Create(iter.first);
 				camera->Retreive(*document, *iter.second.element);
 				iter.second.object = camera;
+				//document->m_objectMap[iter.first] = { iter.second.element, camera };
+				//sceneObjects.emplace(iter.first, camera);
 
 				m_models.push_back(camera);
 			}
 		}
 	}
 
+	printf("curves %d, models %d\n", m_curves.size(), m_models.size());
+
 	// parse connections and assign properties
 
 	for (auto& conn : document->m_connections)
 	{
-		FBXObject* parent = document->m_objectMap[conn.to].object;
-		FBXObject* child = document->m_objectMap[conn.from].object;
+		//auto parentIter = sceneObjects.find(conn.to);
+		//auto childIter = sceneObjects.find(conn.from);
+
+		//if (parentIter == end(sceneObjects) || childIter == end(sceneObjects))
+		//	continue;
+
+		printf("connection from %lld to %lld \n", (long long)conn.from, (long long)conn.to);
+
+		FBXObject* parent =  document->m_objectMap[conn.to].object;
+		FBXObject* child =  document->m_objectMap[conn.from].object;
 
 		if (!parent || !child)
+		{
+			printf("connection objects not found, skip\n");
 			continue;
+		}
+			
 
 		switch (child->GetType())
 		{
@@ -134,6 +159,7 @@ bool Scene::Retrive(FBXDocument* document)
 
 			if (parent->IsNode() && parent->GetType() == FBXObject::Type::ANIMATION_CURVE_NODE)
 			{
+				printf("connect curve to the animation node!\n");
 				parent->OnDataConnectionNotify(fbx::ConnectionEvent::ADD_CHILD, child, &conn);
 				child->OnDataConnectionNotify(fbx::ConnectionEvent::PARENTED, parent, &conn);
 			}
@@ -143,11 +169,14 @@ bool Scene::Retrive(FBXDocument* document)
 
 			if (parent->IsNode())
 			{
+				printf("connect animation node to the model!\n");
 				child->OnDataConnectionNotify(fbx::ConnectionEvent::PARENTED, parent, &conn);
 				parent->OnDataConnectionNotify(fbx::ConnectionEvent::ADD_CHILD, child, &conn);
 			}
 
 			break;
+		default:
+			printf("not supported FBXObject Type for the connection, skip for now\n");
 		}
 	}
 	return true;

@@ -13,8 +13,8 @@
 #include "fbxtime.h"
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
+#include "emscripten_browser_file.h"
 #endif
-
 
 #ifdef __cplusplus
     #ifdef __EMSCRIPTEN__
@@ -197,7 +197,8 @@ bool LoadPackets(uint8_t* buffer, size_t size, const float frame_rate,
  * \param size
  * \return 
  */
-EXTERN int load_file(uint8_t* buffer, size_t size) {
+EXTERN int load_file(uint8_t* buffer, size_t size) 
+{
 	/// Load a file - this function is called from javascript when the file upload is activated
 	std::cout << "load_file triggered, buffer " << &buffer << " size " << size << std::endl;
 
@@ -229,64 +230,91 @@ EXTERN int load_file(uint8_t* buffer, size_t size) {
 	//doc.createDefinitions();
 
 	fbx::Importer lImporter;
-	bool lSuccess = lImporter.Initialize("C:\\work\\technocrane\\tdcamera.fbx");
+
+#ifdef __EMSCRIPTEN__
+	constexpr const char* templateFilename{ "assets/tdcamera.fbx" };
+#else
+	constexpr const char* templateFilename{ "C:\\work\\technocrane\\tdcamera.fbx" };
+#endif
+	printf("import asset file - %s\n", templateFilename);
+	bool lSuccess = lImporter.Initialize(templateFilename);
 
 	if (lSuccess)
 	{
 		lImporter.Import(doc);
 
 		// prepare scene data
-
+		printf("Parse connections\n");
 		doc.ParseConnections();
+		printf("Parse objects\n");
 		doc.ParseObjects();
 
 		// modify keyframes
 		
+		printf("Initialize scene and modify keyframes\n");
+
 		fbx::Scene scene;
 		scene.Retrive(&doc);
 
+		printf("Search for TDCamera\n");
 		if (auto node = scene.FindModel("TDCamera"))
 		{
-			auto animNode = node->GetAnimationNode(0);
-			auto curveX = animNode->GetCurve(0);
-			auto curveY = animNode->GetCurve(1);
-			auto curveZ = animNode->GetCurve(2);
-
-			const int keyCount = static_cast<int>(packets.size());
-			curveX->SetKeyCount(keyCount);
-			curveY->SetKeyCount(keyCount);
-			curveZ->SetKeyCount(keyCount);
-			const int flags = 24840;
-			for (int i = 0; i < keyCount; ++i)
+			printf("TDCamera model is found!\n");
+			if (auto animNode = node->GetAnimationNode(0))
 			{
-				const auto& packet = packets[i];
+				auto curveX = animNode->GetCurve(0);
+				auto curveY = animNode->GetCurve(1);
+				auto curveZ = animNode->GetCurve(2);
 
-				fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
-				curveX->SetKey(i, time, packet.x, flags);
-				curveY->SetKey(i, time, packet.y, flags);
-				curveZ->SetKey(i, time, packet.z, flags);
+				const int keyCount = static_cast<int>(packets.size());
+				printf("set key count - %d\n", keyCount);
+				curveX->SetKeyCount(keyCount);
+				curveY->SetKeyCount(keyCount);
+				curveZ->SetKeyCount(keyCount);
+				const int flags = 24840;
+				for (int i = 0; i < keyCount; ++i)
+				{
+					const auto& packet = packets[i];
+
+					fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+					curveX->SetKey(i, time, packet.x, flags);
+					curveY->SetKey(i, time, packet.y, flags);
+					curveZ->SetKey(i, time, packet.z, flags);
+				}
 			}
 		}
 		
+		printf("store scene modifications\n");
 		scene.Store(&doc);
 
 		//
+		printf("Export result into a file\n");
 
+#ifdef __EMSCRIPTEN__
 		fbx::Exporter	lExporter;
 
 		std::cout << "Writing test.fbx" << std::endl;
-		lExporter.Initialize("c:\\work\\technocrane\\test-cgi.fbx", false);
-
+		
+		lExporter.Initialize("", false);
 		lExporter.Export(doc);
+
+		const std::string filename{ "TDCamera.fbx" };
+		const std::string mime_type{ "application/text/plain" };
+
+		printf("Ready to download!\n");
+		emscripten_browser_file::download(filename, mime_type, lExporter.GetStreamBuffer());
+#else
+		fbx::Exporter	lExporter;
+
+		std::cout << "Writing test.fbx" << std::endl;
+		constexpr const char* outputFilename{ "c:\\work\\technocrane\\test-cgi.fbx" };
+
+		lExporter.Initialize(outputFilename, false);
+		lExporter.Export(doc);
+		
+#endif
 	}
-	/*
-	fbx::Exporter	lExporter;
-
-	std::cout << "Writing test.fbx" << std::endl;
-	lExporter.Initialize("c:\\work\\technocrane\\test-cgi.fbx", false);
-
-	lExporter.Export(doc);
-	*/
+	
 	return 1;
 }
 

@@ -11,6 +11,8 @@
 
 namespace fbx {
 
+#define FBX_VERSION_LONG            7500
+
 	// "Constants"
 #define 	FBX_VERSION				7400
 #define		FBX_HEADER_VERSION		1003
@@ -52,7 +54,7 @@ namespace fbx {
     };
     class Writer {
     public:
-        Writer(std::ofstream *output);
+        Writer(std::ostream *output);
 
         void write(std::uint8_t);
         void write(std::int8_t);
@@ -65,15 +67,15 @@ namespace fbx {
         void write(const std::string&);
         void write(float);
         void write(double);
-		void writeBlockSentinelData();
+		void writeBlockSentinelData(const int blockLength = 25);
 
         std::streampos tell() {
-			return (ofstream) ? ofstream->tellp() : 0;
+			return (stream) ? stream->tellp() : std::streampos(0);
 		}
 
     private:
         void putc(uint8_t);
-        std::ofstream *ofstream;
+        std::ostream *stream;
     };
 
 

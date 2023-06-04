@@ -21,11 +21,11 @@ namespace fbx
 	struct AnimationCurveNode : FBXObject
 	{
 	protected:
-		AnimationCurveNode();
+		AnimationCurveNode(int64_t id);
 
 	public:
 		static const Type s_type = Type::ANIMATION_CURVE_NODE;
-		static AnimationCurveNode* Create();
+		static AnimationCurveNode* Create(int64_t id);
 		static const char* GetClassName() { return "AnimationCurveNode"; }
 
 		

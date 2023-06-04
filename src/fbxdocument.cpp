@@ -356,18 +356,18 @@ namespace fbx {
 		return lResult;
 	}
 
-	void FBXDocument::PopulateObjectMap(const FBXNode& node)
+	void FBXDocument::PopulateObjectMap(FBXNode& node)
 	{
 		if (node.getPropertiesCount() > 0 && node.getProperties().at(0).GetType() == FBXProperty::LONG)
 		{
-			const u64 id{ static_cast<u64>(node.getProperties().at(0).AsLong()) };
+			const i64 id{ node.getProperties().at(0).AsLong() };
 
 			if (m_objectMap.find(id) != end(m_objectMap))
 			{
 				printf("already exist!\n");
 			}
-
-			m_objectMap[id] = { &node, nullptr };
+			node.m_Id = id;
+			m_objectMap[id] = { &node };
 		}
 
 		for (auto& child : node.getChildren())
@@ -394,8 +394,8 @@ namespace fbx {
 				&& node.getProperties().at(2).GetType() == FBXProperty::LONG)
 			{
 				Connection c = { Connection::OBJECT_OBJECT };
-				node.getProperties().at(1).GetData(&c.from);
-				node.getProperties().at(2).GetData(&c.to);
+				c.from = node.getProperties().at(1).AsLong();
+				c.to = node.getProperties().at(2).AsLong();
 				m_connections.push_back(std::move(c));
 			}
 			else
@@ -410,8 +410,8 @@ namespace fbx {
 				&& node.getProperties().at(2).GetType() == FBXProperty::LONG)
 			{
 				Connection c = { Connection::OBJECT_PROPERTY };
-				node.getProperties().at(1).GetData(&c.from);
-				node.getProperties().at(2).GetData(&c.to);
+				c.from = node.getProperties().at(1).AsLong();
+				c.to = node.getProperties().at(2).AsLong();
 				c.property = &node.getProperties().at(3);
 				m_connections.push_back(std::move(c));
 			}
@@ -476,7 +476,7 @@ namespace fbx {
 		// all objects map
 
 		m_objectMap.clear();
-		m_objectMap[0] = { &m_root, nullptr };
+		m_objectMap[0] = { &m_root };
 
 		for (auto& child : objs->getChildren())
 		{

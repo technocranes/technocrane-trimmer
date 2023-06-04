@@ -56,43 +56,38 @@ bool Importer::Initialize(const char *filename)
 
 bool Importer::Import(FBXDocument &document)
 {
-	bool lSuccess = true;
-
 	Reader reader(&mFile);
 	
-	try
+	
+	mFile >> std::noskipws;
+	if (!checkMagic(reader))
 	{
-
-		mFile >> std::noskipws;
-		if (!checkMagic(reader)) 
-			throw std::exception("Not a FBX file");
-
-		uint32_t version = reader.readUint32();
-		uint32_t maxVersion = 7700; // we need to support 7700
-
-		if (version > maxVersion)
-		{
-			throw std::exception("Unsupported FBX version");
-		}
-
-		uint64_t start_offset = 27; // magic: 21+2, version: 4
-		FBXNode &root = document.getRoot();
-
-		while (true)
-		{
-			FBXNode node;
-			start_offset += node.read(mFile, start_offset, version);
-			if (node.isNull()) break;
-			root.addChild(node);
-		};
-	}
-	catch (std::exception &e)
-	{
-		lSuccess = false;
-		printf("error while import a document - %s\n", e.what());
+		printf("error while import a document - %s\n", "Not a FBX file");
+		return false;
 	}
 
-	return lSuccess;
+	uint32_t version = reader.readUint32();
+	uint32_t maxVersion = 7700; // we need to support 7700
+
+	if (version > maxVersion)
+	{
+		printf("error while import a document - %s\n", "Unsupported FBX version");
+		return false;
+	}
+
+	uint64_t start_offset = 27; // magic: 21+2, version: 4
+	FBXNode &root = document.getRoot();
+
+	while (true)
+	{
+		FBXNode node;
+		start_offset += node.read(mFile, start_offset, version);
+		if (node.isNull()) break;
+		root.addChild(std::move(node));
+	};
+	
+
+	return true;
 }
 
 bool Importer::Destroy()

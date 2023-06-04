@@ -84,12 +84,12 @@ namespace fbx
 	struct AnimationCurve : FBXObject
 	{
 	protected:
-		AnimationCurve();
+		AnimationCurve(int64_t id);
 
 	public:
 
 		static const Type s_type = Type::ANIMATION_CURVE;
-		static AnimationCurve* Create();
+		static AnimationCurve* Create(int64_t id);
 		static const char* GetClassName() { return "AnimationCurve"; }
 
 		virtual int getKeyCount() const = 0;

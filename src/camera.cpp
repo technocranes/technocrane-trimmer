@@ -6,8 +6,8 @@ using namespace fbx;
 
 struct CameraImpl : Camera
 {
-	CameraImpl()
-		: Camera()
+	CameraImpl(int64_t id)
+		: Camera(id)
 	{
 	}
 
@@ -19,12 +19,12 @@ struct CameraImpl : Camera
 	}
 };
 
-Camera::Camera()
-	: Model()
+Camera::Camera(int64_t id)
+	: Model(id)
 {}
 
-Camera* Camera::Create()
+Camera* Camera::Create(int64_t id)
 {
-	CameraImpl* newCamera = new CameraImpl();
+	CameraImpl* newCamera = new CameraImpl(id);
 	return newCamera;
 }

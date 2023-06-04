@@ -14,7 +14,7 @@ namespace fbx
 	class FBXNode;
 	class FBXProperty;
 
-#define EXPORTER_BUFFER_SIZE		1 << 16
+#define EXPORTER_BUFFER_SIZE	204800 // 200 kb	 // 1 << 16
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// Exporter class
@@ -27,9 +27,11 @@ namespace fbx
 	{
 	public:
 		// a constructor
-		ExporterNode(Exporter *pExporter, FBXNode *pNode)
+		ExporterNode(Exporter *pExporter, FBXNode *pNode, std::ostream* stream, int version)
 			: mExporter(pExporter)
 			, mNode(pNode)
+			, m_Stream(stream)
+			, m_Version(version)
 		{}
 
 		virtual uint32_t Write(uint32_t start_offset, bool is_last) {
@@ -42,6 +44,8 @@ namespace fbx
 	protected:
 		Exporter *mExporter;
 		FBXNode	*mNode;
+		std::ostream* m_Stream{ nullptr };
+		int m_Version{ 0 };
 	};
 
 	//////////////////////////////////////////////////////////////
@@ -50,8 +54,8 @@ namespace fbx
 	{
 	public:
 		//! a constructor
-		ExporterNodeBinary(Exporter *pExporter, FBXNode *pNode)
-			: ExporterNode(pExporter, pNode)
+		ExporterNodeBinary(Exporter *pExporter, FBXNode *pNode, std::ostream* stream, int version)
+			: ExporterNode(pExporter, pNode, stream, version)
 		{}
 
 		//
@@ -71,8 +75,8 @@ namespace fbx
 	{
 	public:
 		// a constructor
-		ExporterNodeAscii(Exporter *pExporter, FBXNode *pNode)
-			: ExporterNode(pExporter, pNode)
+		ExporterNodeAscii(Exporter *pExporter, FBXNode *pNode, std::ostream* stream, int version)
+			: ExporterNode(pExporter, pNode, stream, version)
 		{}
 
 		//
@@ -105,22 +109,24 @@ namespace fbx
 		bool Export(const FBXDocument &document);
 
 		bool Destroy();
-
+		/*
 		std::ofstream &GetStream()
 		{
 			return mFile;
 		}
+		*/
+		const char* GetStreamBuffer() const { return m_StreamBuffer; }
 
 	protected:
 
-		char			*mStreamBuffer;
-		std::ofstream	mFile;
+		char			*m_StreamBuffer;
+		std::ofstream	m_File;
 
-		std::string		mFilename;
-		bool			mIsBinary;
+		std::string		m_Filename;
+		bool			m_IsBinary;
 
-		bool WriteBinary(const FBXDocument &document);
-		bool WriteASCII(const FBXDocument &document);
+		bool WriteBinary(const FBXDocument &document, std::ostream* stream);
+		bool WriteASCII(const FBXDocument &document, std::ostream& stream);
 	};
 
 

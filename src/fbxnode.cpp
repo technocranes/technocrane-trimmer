@@ -79,6 +79,12 @@ uint64_t FBXNode::read(std::ifstream &input, uint64_t start_offset, uint16_t ver
     return bytes;
 }
 
+void FBXNode::Clear()
+{
+	children.clear();
+	properties.clear();
+}
+
 void FBXNode::removeProperties(bool recursive)
 {
 	properties.clear();
@@ -188,6 +194,12 @@ void FBXNode::addPropertyNode(const char *name, const std::string &v) { FBXNode 
 void FBXNode::addPropertyNode(const char *name, const char *v) { FBXNode n(name); n.addProperty(v); addChild(n); }
 
 void FBXNode::addChild(FBXNode &child) { children.push_back(child); }
+void FBXNode::addChild(FBXNode&& child) { children.push_back(child); }
+
+std::vector<FBXNode>& FBXNode::getChildren()
+{
+	return children;
+}
 
 const std::vector<FBXNode> &FBXNode::getChildren() const
 {

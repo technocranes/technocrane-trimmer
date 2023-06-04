@@ -24,8 +24,8 @@ namespace fbx
 		};
 
 		Type type;
-		u64 from;
-		u64 to;
+		i64 from;
+		i64 to;
 		// TODO: is that safe enough!
 		const FBXProperty* srcProperty;
 		const FBXProperty* property;

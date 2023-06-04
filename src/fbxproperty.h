@@ -81,7 +81,7 @@ public:
     void Set(const std::string&);
     void Set(const char*);
 
-    void write(std::ofstream &output);
+    void write(std::ostream* output);
 
 	// json format
     std::string to_string(bool skip_quotes=false, bool exit_on_zero_char=false) const;

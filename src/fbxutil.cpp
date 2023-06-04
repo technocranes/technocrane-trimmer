@@ -172,14 +172,13 @@ void Reader::read(char *s, uint32_t n)
     }
 }
 
-Writer::Writer(std::ofstream *output)
-	:ofstream(output)
-{
-}
+Writer::Writer(std::ostream *output)
+	:stream(output)
+{}
 
 void Writer::putc(uint8_t c)
 {
-    (*ofstream) << c;
+    (*stream) << c;
 }
 
 void Writer::write(std::uint8_t a)
@@ -282,9 +281,9 @@ void Writer::write(double a)
     }
 }
 
-void Writer::writeBlockSentinelData()
+void Writer::writeBlockSentinelData(const int blockLength)
 {
-	for (int i = 0; i < 13; ++i)
+	for (int i = 0; i < blockLength; ++i)
 		putc('\0');
 }
 
