@@ -100,6 +100,9 @@ namespace fbx
 		virtual void SetKeyCount(const int count) = 0;
 		virtual void SetKey(int index, const OFBTime& time, const float value, const int flags=0) = 0;
 
+		virtual void SetKeyLinearFlags() = 0;
+		virtual void SetKeyConstFlags() = 0;
+
 		virtual double Evaluate(const OFBTime& time) const = 0;
 
 	};

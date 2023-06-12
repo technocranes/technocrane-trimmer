@@ -239,8 +239,8 @@ bool Exporter::WriteBinary(const FBXDocument &document, std::ostream* stream)
 }
 bool Exporter::WriteASCII(const FBXDocument &document, std::ostream& stream)
 {
-	stream << "; FBX 7.4.0 project file" << std::endl;
-	stream << "; Exported by Neill3d Exporter 2018" << std::endl;
+	stream << "; FBX 7.7.0 project file" << std::endl;
+	stream << "; Exported by Technocrane Trimmer 2023" << std::endl;
 	stream << "; -----------------------------------" << std::endl;
 	stream << std::endl;
 

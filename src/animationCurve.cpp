@@ -67,6 +67,7 @@ struct AnimationCurveImpl : AnimationCurve
 		m_Times.resize(count);
 		m_Values.resize(count);
 		//m_Flags.resize(count);
+		SetKeyLinearFlags();
 	}
 
 	void SetKey(int index, const OFBTime& time, const float value, const int flags) override
@@ -76,9 +77,30 @@ struct AnimationCurveImpl : AnimationCurve
 		//m_Flags[index] = flags;
 	}
 
-	std::vector<i64>	m_Times;
-	std::vector<float>	m_Values;
-	std::vector<int>	m_Flags;
+	void SetKeyFlags(const std::vector<int32_t>&& flags)
+	{
+		m_Flags = flags;
+	}
+
+	/// <summary>
+	/// ;KeyAttrFlags: Linear 260
+	/// </summary>
+	void SetKeyLinearFlags() override
+	{
+		m_Flags = std::vector<int32_t>(1, 260);
+	}
+
+	/// <summary>
+	/// ;KeyAttrFlags: Constant|ConstantStandard	2
+	/// </summary>
+	void SetKeyConstFlags() override
+	{
+		m_Flags = std::vector<int32_t>(1, 2);
+	}
+
+	std::vector<i64>		m_Times;
+	std::vector<float>		m_Values;
+	std::vector<int32_t>	m_Flags;
 
 	// cache
 	OFBTime		m_LastEvalTime;
@@ -156,7 +178,8 @@ struct AnimationCurveImpl : AnimationCurve
 
 		// ; KeyAttrFlags: Cubic | TangeantAuto 264
 		// ;KeyAttrFlags: Linear 260
-		element.addPropertyNode("KeyAttrFlags", std::vector<int32_t>(1, 260));
+		// ;KeyAttrFlags: Constant|ConstantStandard	2
+		element.addPropertyNode("KeyAttrFlags", m_Flags);
 		
 		// ;KeyAttrDataFloat: RightAuto:0, NextLeftAuto:0
 		element.addPropertyNode("KeyAttrDataFloat", std::vector<int32_t>({ 0, 0, 218434821, 0 }));

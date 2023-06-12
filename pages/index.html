@@ -43,31 +43,95 @@
         to {transform: rotate(360deg);}
       }
 
+      .layout {
+        display: flex;
+        gap: 16px;
+        width: 80%;
+        margin-right:auto;
+        margin-left:auto;
+      }
+
     </style>
   </head>
   <body>
     <hr/>
-    <strong>Technocrane Trimmer</strong>
-    <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>emscripten</strong></center></figure>
+    
+    <center style="margin-top:3.5em"><img src="technocrane.png" alt="Technocrane" style="width:535px;height:93px;"></center>
+    <br/>
+    <center style="margin-top:.5em"><strong>Trim and export your raw *.cgi stream into *.fbx file</strong></center>
+    <figure style="overflow:visible;" id="spinner"><div class="spinner"></div><center style="margin-top:0.5em"><strong>Processing Module</strong></center></figure>
     <div class="emscripten" id="status">Downloading...</div>
     <div class="emscripten">
       <progress value="0" max="100" id="progress" hidden=1></progress>  
     </div>
     
-    <hr/>
+    <section class="layout">
+      <label for="fileInput">Choose a *.cgi file: </label>
+      <div><input type="file" id="fileInput"></div>
+    </section>
+    
+    <section class="layout">
+      
+      <div><p></p><button onclick="readFile()">Export To FBX</button></div>
+      <div><p>Frame Rate: </p><input type="number" step="1.0" value="25" id="frameRate"></div>
+      <div><p>Start Time Code: </p><input type="time" id="startTimeCode" step="01.0" value="00:00:00"></div>
+      <div><p>End Time Code: </p><input type="time" id="endTimeCode" step="01.0" value="00:00:00"></div>
+    </section>
+    
+    
+    <br/>
+    <div/>
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
-    <input type="file" id="fileInput">
-    <button onclick="readFile()">Read File</button>
+    <a href="https://github.com/technocranes">Technocrane Github Page</a>
+    <br/>
+    <a href="https://www.supertechno.com/">Visit Official Technocrane Website</a>
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
       var progressElement = document.getElementById('progress');
       var spinnerElement = document.getElementById('spinner');
+      var frameRateElement = document.getElementById("frameRate");
+      var startTimeElement = document.getElementById("startTimeCode");
+      var endTimeElement = document.getElementById("endTimeCode");
+
+      document.getElementById('fileInput').addEventListener('change', function(e) {
+        if (e.target.files[0]) {
+          const file = e.target.files[0];
+          const reader = new FileReader();
+          var frameRateValue = frameRateElement.value;
+
+          reader.onload = (event) => {
+            const uint8Arr = new Uint8Array(event.target.result);
+            const num_bytes = uint8Arr.length * uint8Arr.BYTES_PER_ELEMENT;
+            const data_ptr = Module._malloc(num_bytes);
+            const data_on_heap = new Uint8Array(Module.HEAPU8.buffer, data_ptr, num_bytes);
+            data_on_heap.set(uint8Arr);
+            const res = Module.ccall('PrintCGIInfo', 'number', ['number', 'number', 'number'], [data_on_heap.byteOffset, uint8Arr.length, frameRateValue]);
+            Module._free(data_ptr);
+          };
+          reader.readAsArrayBuffer(file);
+          }
+      });
+
+      function hmsToSecondsOnly(str) {
+          var p = str.split(':'),
+              s = 0, m = 1;
+
+          while (p.length > 0) {
+              s += m * parseInt(p.pop(), 10);
+              m *= 60;
+          }
+
+          return s;
+      }
 
       function readFile() {
         const fileInput = document.getElementById('fileInput');
         const file = fileInput.files[0];
         const reader = new FileReader();
+        var frameRateValue = frameRateElement.value;
+        var startTime = hmsToSecondsOnly(startTimeElement.value);
+        var endTime = hmsToSecondsOnly(endTimeElement.value);
 
         reader.onload = (event) => {
           const uint8Arr = new Uint8Array(event.target.result);
@@ -75,7 +139,7 @@
           const data_ptr = Module._malloc(num_bytes);
           const data_on_heap = new Uint8Array(Module.HEAPU8.buffer, data_ptr, num_bytes);
           data_on_heap.set(uint8Arr);
-          const res = Module.ccall('load_file', 'number', ['number', 'number'], [data_on_heap.byteOffset, uint8Arr.length]);
+          const res = Module.ccall('TrimAndExportToFBX', 'number', ['number', 'number', 'number', 'number', 'number'], [data_on_heap.byteOffset, uint8Arr.length, frameRateValue, startTime, endTime]);
           Module._free(data_ptr);
         };
         reader.readAsArrayBuffer(file);

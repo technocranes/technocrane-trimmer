@@ -85,6 +85,8 @@ namespace fbx
 		// fast way to look for location translation, rotation, visibility, etc.
 		const AnimationCurveNode* FindAnimationNodeByType(const int typeId, const	AnimationLayer* pLayer) const;
 
+		AnimationCurveNode* FindAnimationNodeByName(const char* name) const;
+
 		//
 		//void GetMatrix(OFBMatrix& pMatrix, ModelTransformationType pWhat = eModelTransformation, bool pGlobalInfo = true, const OFBTime* pTime = nullptr) const;
 		//void GetVector(OFBVector3& pVector, ModelTransformationType pWhat = eModelTranslation, bool pGlobalInfo = true, const OFBTime* pTime = nullptr) const;

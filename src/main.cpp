@@ -10,7 +10,10 @@
 #include "model.h"
 #include "animationCurve.h"
 #include "animationCurveNode.h"
+#include "nodeAttribute.h"
 #include "fbxtime.h"
+#include "cgiConvert.h"
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #include "emscripten_browser_file.h"
@@ -31,269 +34,275 @@
 #endif
 
 
-/**
- * check if file data is in ASCII or binary format.
- * 
- * \param buffer
- * \param size
- * \return true if file is in ASCII
- */
-bool IsAscii(uint8_t* buffer, size_t size)
+
+
+
+
+
+/// <summary>
+/// Print to console information about raw *.cgi stream, like start / stop timecodes
+/// </summary>
+/// <param name="buffer"></param>
+/// <param name="size"></param>
+/// <param name="frameRate"></param>
+/// <returns></returns>
+EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate)
 {
-	uint8_t* readPtr = buffer;
-	size_t pos = 0;
-	
-	int c;
-	while ((c = *readPtr) != EOF && c <= 127 && pos < size)
+	CGIConvert cgiConvert;
+	cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate));
+
+	printf("Loaded packets - %d\n", cgiConvert.GetNumberOfPackets());
+	if (!cgiConvert.IsEmpty())
 	{
-		++pos;
-		++readPtr;
-	}
-
-	return (c == EOF);
-}
-
-struct membuf : std::streambuf {
-	membuf(char* begin, char* end) {
-		this->setg(begin, begin, end);
-	}
-};
-
-
-/**
- * extract CGIData packets from a data buffer and put them into given packets array.
- * 
- * \param buffer
- * \param frame_rate
- * \param size
- * \param packets
- * \return true if operation was successfull
- */
-bool LoadAscii(uint8_t* buffer, size_t size, float frame_rate, std::vector<CGIDataCartesian>& packets)
-{
-	char line[1024]{ 0 };
-	char start_letter = '-';
-	int  frame_number = -1;
-
-	int packet_number = 0;
-	int temp = 0;
-
-	membuf mem_buf( reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
-	std::istream in(&mem_buf);
-
-	do {
-		in.getline(line, 1024, '\n');
-		if (in.eof()) break;
-
-		CGIDataCartesian data;
-		memset(&data, 0, sizeof(CGIDataCartesian));
-		data.syncVal = TDDE_SYNC_VAL;
-		data.checkSum = sizeof(CGIDataCartesian);
-
-#ifdef _MSC_VER
-		int parse = sscanf_s(line,
-			"%c%d.00,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%f",
-			&start_letter, 1, &frame_number,
-			&data.x, &data.y, &data.z,
-			&data.pan, &data.tilt, &data.roll,
-			&data.zoom, &data.focus, &data.iris,
-			&temp, &data.spare.trackPos);
-#else
-		int parse = sscanf(line,
-			"%c%d.00,%f,%f,%f,%f,%f,%f,%f,%f,%f,%d,%f",
-			&start_letter, &frame_number,
-			&data.x, &data.y, &data.z,
-			&data.pan, &data.tilt, &data.roll,
-			&data.zoom, &data.focus, &data.iris,
-			&temp, &data.spare.trackPos);
-#endif
-		/*
-		if (m_verbose>1){
-			char buffer[1024];
-			sprintf(buffer,
-					"%c%d.00,%.4f,%.4f,%.4f,%.3f,%.4f,%.4f,%.4f,%.4f,%.4f\n",
-					startLetter,frameNumber,
-					data.x,   data.y, data.z,
-					data.pan, data.tilt, data.roll,
-					data.zoom, data.focus, data.iris);
-			log() << buffer;
-		}
-		*/
-		if (parse != 13) {
-			printf("loadCGI ERROR: Parse error for line ...\n");
-			return false;
-		}
-
-		data.packetNumber = packet_number;
-		packet_number += 1;
-
-		CGIDataCartesianVersion1* ptr = reinterpret_cast<CGIDataCartesianVersion1*>(&data);
-		ptr->frameNumber = frame_number;
-		ptr->time = static_cast<float>(frame_number / frame_rate);
-
-		packets.emplace_back(data);
-
-	} while (!in.eof());
-
-	return true;
-}
-
-/**
- * read packets from binary source and put them into a given packets array.
- * 
- * \param buffer
- * \param size
- * \param packets
- * \return true if opeartion was successfull
- */
-bool LoadBinary(uint8_t* buffer, size_t size, std::vector<CGIDataCartesian>& packets)
-{
-	//membuf mem_buf(reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
-	//std::istream in(&mem_buf);
-	//in.ignore(std::numeric_limits<std::streamsize>::max());
-	
-	if (size <= 0) 
-	{
-		printf("File size is empty\n");
-		return false;
-	}
-
-	const size_t number_of_packets = size / sizeof(CGIDataCartesian);
-
-	if (number_of_packets == 0 || size % sizeof(CGIDataCartesian) != 0) 
-	{
-		printf("Wrong file content\n");
-		return false;
-	}
-
-	packets.resize(number_of_packets);
-
-	memcpy(packets.data(), buffer, size);
-
-	/*
-	for (size_t i = 0; i < number_of_packets; ++i) {
-		in.read(reinterpret_cast<char*>(&packets[i]), sizeof(CGIDataCartesian));
-		packets[i].packetNumber = i;
-	}
-	*/
-	return true;
-}
-
-bool LoadPackets(uint8_t* buffer, size_t size, const float frame_rate,
-	std::vector<CGIDataCartesian>& packets) 
-{
-	if (IsAscii(buffer, size))
-	{
-		return LoadAscii(buffer, size, frame_rate, packets);
-	}
-
-	return LoadBinary(buffer, size, packets);
-}
-
-/**
- * Load CGI, trim it and save into fbx.
- * 
- * \param buffer
- * \param size
- * \return 
- */
-EXTERN int load_file(uint8_t* buffer, size_t size) 
-{
-	/// Load a file - this function is called from javascript when the file upload is activated
-	std::cout << "load_file triggered, buffer " << &buffer << " size " << size << std::endl;
-
-	// do whatever you need with the file contents
-	std::vector<CGIDataCartesian> packets;
-	LoadPackets(buffer, size, 30.f, packets);
-
-	printf("Loaded packets - %zu\n", packets.size());
-	if (!packets.empty())
-	{
-		const CGIDataCartesian& firstPacket = packets[0];
-		const CGIDataCartesian& lastPacket = packets[packets.size() - 1];
+		const CGIDataCartesian& firstPacket = cgiConvert.GetPacket(0);
+		const CGIDataCartesian& lastPacket = cgiConvert.GetPacket(cgiConvert.GetNumberOfPackets() - 1);
 
 		printf("Start TimeCode %d:%d:%d:%d\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
 			firstPacket.timeCode.frames);
 		printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
 			lastPacket.timeCode.frames);
 	}
-	
+	return 0;
+}
 
+bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double startTime, double endTime)
+{
+	auto node = scene.FindModel("TDCamera");
+	if (node == nullptr)
+		return false;
+
+	fbx::AnimationCurveNode* translationNode = node->FindAnimationNodeByName("T");
+	fbx::AnimationCurveNode* rotationNode = node->FindAnimationNodeByName("R");
+
+	if (node->GetNodeAttribute() == nullptr)
+	{
+		printf("node attribute is empty\n");
+		return false;
+	}
+
+	fbx::AnimationCurveNode* fieldOfViewNode = node->GetNodeAttribute()->FindAnimationNodeByName("FieldOfView");
+	fbx::AnimationCurveNode* focusDistanceNode = node->GetNodeAttribute()->FindAnimationNodeByName("FocusDistance");
+
+	fbx::AnimationCurveNode* zoomNode = node->FindAnimationNodeByName("Zoom");
+	fbx::AnimationCurveNode* focusNode = node->FindAnimationNodeByName("Focus");
+	fbx::AnimationCurveNode* irisNode = node->FindAnimationNodeByName("Iris");
+	fbx::AnimationCurveNode* trackPosNode = node->FindAnimationNodeByName("TrackPos");
+	fbx::AnimationCurveNode* packetNumberNode = node->FindAnimationNodeByName("PacketNumber");
+
+	fbx::AnimationCurveNode* tcHourNode = node->FindAnimationNodeByName("TCHour");
+	fbx::AnimationCurveNode* tcMinuteNode = node->FindAnimationNodeByName("TCMinute");
+	fbx::AnimationCurveNode* tcSecondNode = node->FindAnimationNodeByName("TCSecond");
+	fbx::AnimationCurveNode* tcFrameNode = node->FindAnimationNodeByName("TCFrame");
+	fbx::AnimationCurveNode* tcRateNode = node->FindAnimationNodeByName("TCRate");
+	fbx::AnimationCurveNode* tcSubframeNode = node->FindAnimationNodeByName("TCSubframe");
+
+	if (translationNode == nullptr || rotationNode == nullptr
+		|| !fieldOfViewNode || !focusDistanceNode || !zoomNode || !focusNode
+		|| !tcHourNode || !tcMinuteNode || !tcSecondNode || !tcFrameNode)
+	{
+		printf("not all template animation nodes are found!\n");
+		return false;
+	}
+		
+	auto posX = translationNode->GetCurve(0);
+	auto posY = translationNode->GetCurve(1);
+	auto posZ = translationNode->GetCurve(2);
+
+	auto rotX = rotationNode->GetCurve(0);
+	auto rotY = rotationNode->GetCurve(1);
+	auto rotZ = rotationNode->GetCurve(2);
+
+	auto fieldOfViewCurve = fieldOfViewNode->GetCurve(0);
+	auto focusDistanceCurve = focusDistanceNode->GetCurve(0);
+
+	auto focusCurve = focusNode->GetCurve(0);
+	auto zoomCurve = zoomNode->GetCurve(0);
+	auto irisCurve = irisNode->GetCurve(0);
+
+	auto trackPosCurve = trackPosNode->GetCurve(0);
+	auto packetNumberCurve = packetNumberNode->GetCurve(0);
+
+	auto tcHourCurve = tcHourNode->GetCurve(0);
+	auto tcMinuteCurve = tcMinuteNode->GetCurve(0);
+	auto tcSecondCurve = tcSecondNode->GetCurve(0);
+	auto tcFrameCurve = tcFrameNode->GetCurve(0);
+	auto tcRateCurve = tcRateNode->GetCurve(0);
+	auto tcSubframeCurve = tcSubframeNode->GetCurve(0);
+
+	const int keyCount = cgiConvert.GetNumberOfPackets();
+	const bool hasTrimRegion = (endTime > 0.0);
+	int realKeyCount = (hasTrimRegion) ? 0 : keyCount;
+
+	if (hasTrimRegion)
+	{
+		for (int i = 0; i < keyCount; ++i)
+		{
+			const auto& packet = cgiConvert.GetPacket(i);
+			fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+
+			// TRIM OPERATION
+			const double timeSec = time.GetSecondDouble();
+			if (timeSec < startTime)
+				continue;
+			else if (timeSec > endTime)
+				break;
+
+			realKeyCount += 1;
+		}
+	}
+
+	if (realKeyCount <= 0)
+		return false;
+
+	posX->SetKeyCount(realKeyCount);
+	posY->SetKeyCount(realKeyCount);
+	posZ->SetKeyCount(realKeyCount);
+
+	rotX->SetKeyCount(realKeyCount);
+	rotY->SetKeyCount(realKeyCount);
+	rotZ->SetKeyCount(realKeyCount);
+
+	// camera attribute processed values
+	if (cgiConvert.IsCalibratedCGI())
+	{
+		fieldOfViewCurve->SetKeyCount(realKeyCount);
+		focusDistanceCurve->SetKeyCount(realKeyCount);
+	}
+
+	// raw values
+	zoomCurve->SetKeyCount(realKeyCount);
+	focusCurve->SetKeyCount(realKeyCount);
+	irisCurve->SetKeyCount(realKeyCount);
+	trackPosCurve->SetKeyCount(realKeyCount);
+	packetNumberCurve->SetKeyCount(realKeyCount);
+	packetNumberCurve->SetKeyConstFlags();
+
+	tcHourCurve->SetKeyCount(realKeyCount);
+	tcHourCurve->SetKeyConstFlags();
+	tcMinuteCurve->SetKeyCount(realKeyCount);
+	tcMinuteCurve->SetKeyConstFlags();
+	tcSecondCurve->SetKeyCount(realKeyCount);
+	tcSecondCurve->SetKeyConstFlags();
+	tcFrameCurve->SetKeyCount(realKeyCount);
+	tcFrameCurve->SetKeyConstFlags();
+
+	const int flags = 24840;
+	constexpr float SPACE_SCALE{ 100.f };
+
+	realKeyCount = 0;
+	for (int i = 0; i < keyCount; ++i)
+	{
+		const auto& packet = cgiConvert.GetPacket(i);
+		fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+
+		// TRIM OPERATION
+		const double timeSec = time.GetSecondDouble();
+		if (hasTrimRegion)
+		{
+			if (timeSec < startTime)
+				continue;
+			else if (timeSec > endTime)
+				break;
+		}
+
+		fbx::FVector4 posXYZ, rotXYZ;
+		cgiConvert.ConvertToFBX(packet, posXYZ, rotXYZ);
+
+		posX->SetKey(realKeyCount, time, posXYZ.x);
+		posY->SetKey(realKeyCount, time, posXYZ.y);
+		posZ->SetKey(realKeyCount, time, posXYZ.z);
+
+		rotX->SetKey(realKeyCount, time, rotXYZ.x);
+		rotY->SetKey(realKeyCount, time, rotXYZ.y);
+		rotZ->SetKey(realKeyCount, time, rotXYZ.z);
+
+		// processed camera node attribute values
+		if (cgiConvert.IsCalibratedCGI())
+		{
+			fieldOfViewCurve->SetKey(realKeyCount, time, cgiConvert.ConvertFocalLength(packet));
+			focusDistanceCurve->SetKey(realKeyCount, time, cgiConvert.ConvertFocusDistance(packet));
+		}
+
+		// raw values
+		zoomCurve->SetKey(realKeyCount, time, packet.zoom);
+		focusCurve->SetKey(realKeyCount, time, packet.focus);
+		irisCurve->SetKey(realKeyCount, time, packet.iris);
+		trackPosCurve->SetKey(realKeyCount, time, packet.spare.trackPos);
+		packetNumberCurve->SetKey(realKeyCount, time, static_cast<float>(packet.packetNumber));
+
+		tcHourCurve->SetKey(realKeyCount, time, static_cast<float>(packet.timeCode.hours));
+		tcMinuteCurve->SetKey(realKeyCount, time, static_cast<float>(packet.timeCode.minutes));
+		tcSecondCurve->SetKey(realKeyCount, time, static_cast<float>(packet.timeCode.seconds));
+		tcFrameCurve->SetKey(realKeyCount, time, static_cast<float>(packet.timeCode.frames));
+
+		realKeyCount += 1;
+	}
+	return true;
+}
+
+/**
+ * Load CGI, trim it and save into fbx.
+ * 
+ * \param buffer - cgi data
+ * \param size size of cgi data
+ * \return status of the operation
+ */
+EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTime, double endTime) 
+{
+	CGIConvert cgiConvert;
+	if (!cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate))
+		|| cgiConvert.IsEmpty())
+	{
+		printf("Faled to load cgi stream packets or stream has no packets!\n");
+		return -1;
+	}
+
+	//
 	// write into fbx
 
 	fbx::FBXDocument doc;
-
-	//doc.createHeader();
-	//doc.createGlobalSettings();
-	//doc.createDocuments();
-	//doc.createReferences();
-	//doc.createDefinitions();
-
 	fbx::Importer lImporter;
 
 #ifdef __EMSCRIPTEN__
-	constexpr const char* templateFilename{ "assets/tdcamera.fbx" };
+	constexpr const char* templateFilename{ "assets/tdcamera2.fbx" };
 #else
 	constexpr const char* templateFilename{ "C:\\work\\technocrane\\tdcamera.fbx" };
 #endif
-	printf("import asset file - %s\n", templateFilename);
+	printf("import a template file - %s\n", templateFilename);
 	bool lSuccess = lImporter.Initialize(templateFilename);
 
 	if (lSuccess)
 	{
+		std::cout << "Import" << std::endl;
 		lImporter.Import(doc);
 
+		std::cout << "Parse" << std::endl;
 		// prepare scene data
-		printf("Parse connections\n");
 		doc.ParseConnections();
-		printf("Parse objects\n");
 		doc.ParseObjects();
 
 		// modify keyframes
 		
-		printf("Initialize scene and modify keyframes\n");
-
+		std::cout << "Scene retrieve" << std::endl;
 		fbx::Scene scene;
-		scene.Retrive(&doc);
+		scene.Retrieve(&doc);
 
-		printf("Search for TDCamera\n");
-		if (auto node = scene.FindModel("TDCamera"))
+		std::cout << "Prepare camera animation" << std::endl;
+		if (!PrepareCameraAnimation(scene, cgiConvert, startTime, endTime))
 		{
-			printf("TDCamera model is found!\n");
-			if (auto animNode = node->GetAnimationNode(0))
-			{
-				auto curveX = animNode->GetCurve(0);
-				auto curveY = animNode->GetCurve(1);
-				auto curveZ = animNode->GetCurve(2);
-
-				const int keyCount = static_cast<int>(packets.size());
-				printf("set key count - %d\n", keyCount);
-				curveX->SetKeyCount(keyCount);
-				curveY->SetKeyCount(keyCount);
-				curveZ->SetKeyCount(keyCount);
-				const int flags = 24840;
-				for (int i = 0; i < keyCount; ++i)
-				{
-					const auto& packet = packets[i];
-
-					fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
-					curveX->SetKey(i, time, packet.x, flags);
-					curveY->SetKey(i, time, packet.y, flags);
-					curveZ->SetKey(i, time, packet.z, flags);
-				}
-			}
+			std::cout << "Failed to prepare camera animation" << std::endl;
+			return -1;
 		}
-		
-		printf("store scene modifications\n");
+
+		std::cout << "Scene store" << std::endl;
 		scene.Store(&doc);
 
-		//
-		printf("Export result into a file\n");
-
+		// save to file
+		
 #ifdef __EMSCRIPTEN__
 		fbx::Exporter	lExporter;
 
-		std::cout << "Writing test.fbx" << std::endl;
+		std::cout << "Writing TDCamera.fbx" << std::endl;
 		
 		lExporter.Initialize("", false);
 		lExporter.Export(doc);
@@ -306,12 +315,11 @@ EXTERN int load_file(uint8_t* buffer, size_t size)
 #else
 		fbx::Exporter	lExporter;
 
-		std::cout << "Writing test.fbx" << std::endl;
 		constexpr const char* outputFilename{ "c:\\work\\technocrane\\test-cgi.fbx" };
+		std::cout << "Writing " << outputFilename << std::endl;
 
 		lExporter.Initialize(outputFilename, false);
 		lExporter.Export(doc);
-		
 #endif
 	}
 	
@@ -321,33 +329,44 @@ EXTERN int load_file(uint8_t* buffer, size_t size)
 
 /**
  * main entry point.
+ *  Arguments <filename to read> <frameRate> <startTime> <endTime>
  *
  * \return
  */
 int main(int argc, char* argv[]) {
 	printf("Welcome To A Technocrane Trimmer!\n");
 
-	if (argc > 1)
+#ifndef __EMSCRIPTEN__
+
+	if (argc < 5)
 	{
-		const char* fname{ argv[1] };
-		std::ifstream fstream(fname, std::ios::binary | std::ios::ate);
-		std::streamsize size = fstream.tellg();
-
-		if (size <= 0)
-		{
-			printf("Failed to read the file!\n");
-			return -1;
-		}
-
-		fstream.seekg(0, std::ios::beg);
-
-		std::vector<uint8_t> buffer(size);
-		if (fstream.read((char*)buffer.data(), size))
-		{
-			/* worked! */
-			load_file(buffer.data(), buffer.size());
-		}
+		printf("Wrong number of arguments, please provide\n");
+		printf(" <filename to read> <frameRate> <startTime> <endTime>\n");
+		return -1;
 	}
 
+	const char* fname{ argv[1] };
+	std::ifstream fstream(fname, std::ios::binary | std::ios::ate);
+	std::streamsize size = fstream.tellg();
+
+	if (size <= 0)
+	{
+		printf("Failed to read the file!\n");
+		return -1;
+	}
+
+	fstream.seekg(0, std::ios::beg);
+
+	std::vector<uint8_t> buffer(size+1, 0);
+	if (fstream.read((char*)buffer.data(), size))
+	{
+		double frameRate, startTime, endTime;
+		sscanf_s(argv[2], "%lf", &frameRate);
+		sscanf_s(argv[3], "%lf", &startTime);
+		sscanf_s(argv[4], "%lf", &endTime);
+
+		TrimAndExportToFBX(buffer.data(), size, frameRate, startTime, endTime);
+	}
+#endif
 	return 0;
 }

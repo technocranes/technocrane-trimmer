@@ -10,6 +10,7 @@ namespace fbx
 	struct AnimationLayer;
 	struct AnimationCurveNode;
 	struct AnimationCurve;
+	struct NodeAttribute;
 
 	struct DataView
 	{
@@ -123,6 +124,8 @@ namespace fbx
 
 			virtual void OnDataConnectionNotify(fbx::ConnectionEvent, FBXObject* connectionObject, const Connection* connection) {}
 
+			const NodeAttribute* GetNodeAttribute() const { return m_NodeAttribute; }
+
 		protected:
 
 			bool m_isNode{ true };
@@ -132,7 +135,7 @@ namespace fbx
 
 			//const FBXDocument& scene;
 			//const FBXNode& element;
-			//const FBXObject* node_attribute;	// contains some specified class properties ontop of base class
+			const NodeAttribute* m_NodeAttribute{ nullptr };	// contains some specified class properties ontop of base class
 
 	};
 

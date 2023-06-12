@@ -58,6 +58,23 @@ namespace fbx
 		}
 	};
 
+	struct FVector4
+	{
+		float x;
+		float y;
+		float z;
+		float w;
+
+		float& operator [] (int index)
+		{
+			return *(&x + index);
+		}
+		float operator [] (int index) const
+		{
+			return *(&x + index);
+		}
+	};
+
 	struct OFBColor
 	{
 		double r;

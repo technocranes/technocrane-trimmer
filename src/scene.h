@@ -9,7 +9,7 @@ namespace fbx
 	struct AnimationCurve;
 	struct AnimationCurveNode;
 	struct Model;
-
+	struct NodeAttribute;
 
 	class Scene
 	{
@@ -23,16 +23,16 @@ namespace fbx
 		// this is a scene based operations
 		Model* FindModel(const char* name);
 
-		bool Retrive(FBXDocument* document);
+		bool Retrieve(FBXDocument* document);
 		bool Store(FBXDocument* document);
 
 	private:
+		bool m_Verbose{ false };
 
-
-		std::vector<AnimationCurve*> m_curves;
+		std::vector<AnimationCurve*>	m_curves;
 		std::vector<AnimationCurveNode*> m_curveNodes;
-		std::vector<Model*> m_models;
-
+		std::vector<Model*>				m_models;
+		std::vector<NodeAttribute*>		m_nodeAttributes;
 	};
 }
 

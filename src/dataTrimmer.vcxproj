@@ -84,11 +84,44 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="animationCurve.cpp" />
+    <ClCompile Include="animationCurveNode.cpp" />
+    <ClCompile Include="camera.cpp" />
     <ClCompile Include="cgidata.cpp" />
+    <ClCompile Include="fbxdocument.cpp" />
+    <ClCompile Include="fbxexporter.cpp" />
+    <ClCompile Include="fbximporter.cpp" />
+    <ClCompile Include="fbxnode.cpp" />
+    <ClCompile Include="fbxobject.cpp" />
+    <ClCompile Include="fbxproperty.cpp" />
+    <ClCompile Include="fbxtime.cpp" />
+    <ClCompile Include="fbxutil.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="miniz.cpp" />
+    <ClCompile Include="model.cpp" />
+    <ClCompile Include="nodeAttribute.cpp" />
+    <ClCompile Include="scene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="animationCurve.h" />
+    <ClInclude Include="animationCurveNode.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="cgiConvert.h" />
     <ClInclude Include="cgidata.h" />
+    <ClInclude Include="fbxconnection.h" />
+    <ClInclude Include="fbxdocument.h" />
+    <ClInclude Include="fbxexporter.h" />
+    <ClInclude Include="fbximporter.h" />
+    <ClInclude Include="fbxnode.h" />
+    <ClInclude Include="fbxobject.h" />
+    <ClInclude Include="fbxproperty.h" />
+    <ClInclude Include="fbxtime.h" />
+    <ClInclude Include="fbxtypes.h" />
+    <ClInclude Include="fbxutil.h" />
+    <ClInclude Include="miniz.h" />
+    <ClInclude Include="model.h" />
+    <ClInclude Include="nodeAttribute.h" />
+    <ClInclude Include="scene.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

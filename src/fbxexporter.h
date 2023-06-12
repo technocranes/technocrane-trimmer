@@ -14,7 +14,7 @@ namespace fbx
 	class FBXNode;
 	class FBXProperty;
 
-#define EXPORTER_BUFFER_SIZE	204800 // 200 kb	 // 1 << 16
+#define EXPORTER_BUFFER_SIZE	2097152 // 2 Mb	 // 1 << 16
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// Exporter class
@@ -109,12 +109,7 @@ namespace fbx
 		bool Export(const FBXDocument &document);
 
 		bool Destroy();
-		/*
-		std::ofstream &GetStream()
-		{
-			return mFile;
-		}
-		*/
+		
 		const char* GetStreamBuffer() const { return m_StreamBuffer; }
 
 	protected:
