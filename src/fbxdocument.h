@@ -31,6 +31,12 @@ public:
 	void createReferences();
 	void createDefinitions();
 
+	void UpdateHeader();
+	void UpdateGlobalSettings(fbx::i64 startTime, fbx::i64 stopTime, double fps);
+	void UpdateDefinitions();
+	void UpdateAnimationTakeTime(fbx::i64 startTime, fbx::i64 stopTime);
+
+
 	FBXNode* FindNode(const char *name, const FBXNode *parent) const;
 
 	FBXNode		&getRoot() const

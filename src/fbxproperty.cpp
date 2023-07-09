@@ -572,6 +572,7 @@ void FBXProperty::Set(const std::vector<uint8_t>& arr, uint8_t type)
 }
 void FBXProperty::Set(const std::string& text)
 {
+    raw.clear();
     for (uint8_t v : text) {
         raw.push_back(v);
     }
@@ -579,6 +580,7 @@ void FBXProperty::Set(const std::string& text)
 }
 void FBXProperty::Set(const char* text)
 {
+    raw.clear();
     for (; *text != 0; text++) {
         raw.push_back(*text);
     }

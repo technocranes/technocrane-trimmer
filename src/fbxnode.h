@@ -12,6 +12,8 @@ public:
     FBXNode();
     FBXNode(const char *name);
 	FBXNode(const char *name, const FBXProperty &p);
+	// copy properties from
+	FBXNode(const char* _name, const std::vector<FBXProperty>& sourceProperties);
 
     std::uint64_t read(std::ifstream &input, uint64_t start_offset, uint16_t version);
     
@@ -86,7 +88,7 @@ public:
 	void removeProperties(bool recursive);
 
 private:
-	int64_t m_Id;
+	int64_t m_Id{ 0 };
 	std::vector<FBXNode> children;
     std::vector<FBXProperty> properties;
     std::string name;	//!< identifier of a fbx element node

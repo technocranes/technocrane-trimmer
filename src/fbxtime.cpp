@@ -30,6 +30,30 @@ namespace fbx
 	const OFBTime OFBTime::OneHour = 3600 * SECOND_LENGTH;
 
 	////////////////////////////////////////////////////////
+	///
+	OFBTimeMode OFBTime::ConvertFrameRateToTimeMode(double frameRate, double precision)
+	{
+		if (abs(frameRate - 120.0) < precision)
+			return OFBTimeMode::eFrames120;
+		if (abs(frameRate - 100.0) < precision)
+			return OFBTimeMode::eFrames100;
+		if (abs(frameRate - 60.0) < precision)
+			return OFBTimeMode::eFrames60;
+		if (abs(frameRate - 50.0) < precision)
+			return OFBTimeMode::eFrames50;
+		if (abs(frameRate - 48.0) < precision)
+			return OFBTimeMode::eFrames48;
+		if (abs(frameRate - 30.0) < precision)
+			return OFBTimeMode::eFrames30;
+		if (abs(frameRate - 25.0) < precision)
+			return OFBTimeMode::ePAL;
+		if (abs(frameRate - 24.0) < precision)
+			return OFBTimeMode::eFrames24;
+		
+		return OFBTimeMode::eDefaultMode;
+	}
+
+	////////////////////////////////////////////////////////
 	//
 
 	OFBTime::OFBTime(kLongLong pTime)
@@ -37,9 +61,9 @@ namespace fbx
 	{
 	}
 
-	OFBTime::OFBTime(int pHour, int pMinute, int pSecond, int pFrame, int pField, OFBTimeMode pTimeMode)
+	OFBTime::OFBTime(int pHour, int pMinute, int pSecond, int pFrame, int pField, OFBTimeMode pTimeMode, double fps)
 	{
-		SetTime(pHour, pMinute, pSecond, pFrame, pField, pTimeMode);
+		SetTime(pHour, pMinute, pSecond, pFrame, pField, pTimeMode, fps);
 	}
 
 	std::string OFBTime::GetTimeString(OFBTimeMode pMode, ETimeFormats pFormat)
@@ -94,25 +118,25 @@ namespace fbx
 		mTime = kLongLong(pTime * SECOND_LENGTH);
 	}
 
-	void OFBTime::SetTime(int pHour, int pMinute, int pSecond, int pFrame, int pField, OFBTimeMode pTimeMode)
+	void OFBTime::SetTime(int pHour, int pMinute, int pSecond, int pFrame, int pField, OFBTimeMode pTimeMode, double fps)
 	{
 		// TODO: fps according to a time mode or use default system timemode ?!
-		double fps = 30.0;
+		//double fps = 30.0;
 		double secs = 3600.0 * pHour + 60.0 * (double)pMinute + (double)pSecond + pFrame / fps;
 		SetSecondDouble(secs);
 	}
 
-	kLongLong OFBTime::GetFrame(OFBTimeMode pTimeMode)
+	kLongLong OFBTime::GetFrame(OFBTimeMode pTimeMode, double fps)
 	{
-		const double fps = 30.0;
+		//const double fps = 30.0;
 		const double secs = GetSecondDouble();
 
 		return kLongLong(secs * fps);
 	}
 
-	void OFBTime::SetFrame(kLongLong pFrames, OFBTimeMode pTimeMode)
+	void OFBTime::SetFrame(kLongLong pFrames, OFBTimeMode pTimeMode, double fps)
 	{
-		const double fps = 30.0;
+		//const double fps = 30.0;
 		double secs = 1.0 * double(pFrames) / fps;
 
 		SetSecondDouble(secs);

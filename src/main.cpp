@@ -12,6 +12,7 @@
 #include "animationCurveNode.h"
 #include "nodeAttribute.h"
 #include "fbxtime.h"
+#include "fbxutil.h"
 #include "cgiConvert.h"
 
 #ifdef __EMSCRIPTEN__
@@ -32,11 +33,6 @@
         #define EXTERN
     #endif
 #endif
-
-
-
-
-
 
 
 /// <summary>
@@ -65,7 +61,7 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate)
 	return 0;
 }
 
-bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double startTime, double endTime)
+bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double startTime, double endTime, double fps)
 {
 	auto node = scene.FindModel("TDCamera");
 	if (node == nullptr)
@@ -138,7 +134,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 		for (int i = 0; i < keyCount; ++i)
 		{
 			const auto& packet = cgiConvert.GetPacket(i);
-			fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+			fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames, 0, fbx::OFBTimeMode::eCustom, fps);
 
 			// TRIM OPERATION
 			const double timeSec = time.GetSecondDouble();
@@ -185,6 +181,9 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	tcSecondCurve->SetKeyConstFlags();
 	tcFrameCurve->SetKeyCount(realKeyCount);
 	tcFrameCurve->SetKeyConstFlags();
+	tcRateCurve->SetKeyCount(1);
+	tcRateCurve->SetKeyConstFlags();
+	tcRateCurve->SetKey(0, fbx::OFBTime(0), static_cast<float>(fps));
 
 	const int flags = 24840;
 	constexpr float SPACE_SCALE{ 100.f };
@@ -193,7 +192,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	for (int i = 0; i < keyCount; ++i)
 	{
 		const auto& packet = cgiConvert.GetPacket(i);
-		fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames);
+		fbx::OFBTime time(packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds, packet.timeCode.frames, 0, fbx::OFBTimeMode::eCustom, fps);
 
 		// TRIM OPERATION
 		const double timeSec = time.GetSecondDouble();
@@ -247,7 +246,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
  * \param size size of cgi data
  * \return status of the operation
  */
-EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTime, double endTime) 
+EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTimeSec, double endTimeSec, bool isBinary) 
 {
 	CGIConvert cgiConvert;
 	if (!cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate))
@@ -288,7 +287,7 @@ EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, do
 		scene.Retrieve(&doc);
 
 		std::cout << "Prepare camera animation" << std::endl;
-		if (!PrepareCameraAnimation(scene, cgiConvert, startTime, endTime))
+		if (!PrepareCameraAnimation(scene, cgiConvert, startTimeSec, endTimeSec, frameRate))
 		{
 			std::cout << "Failed to prepare camera animation" << std::endl;
 			return -1;
@@ -296,6 +295,21 @@ EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, do
 
 		std::cout << "Scene store" << std::endl;
 		scene.Store(&doc);
+
+		// modify doc global information
+		const CGIDataCartesian& firstPacket = cgiConvert.GetPacket(0);
+		const CGIDataCartesian& lastPacket = cgiConvert.GetPacket(cgiConvert.GetNumberOfPackets() - 1);
+		
+		fbx::OFBTime startTime(firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds, 0, 0, fbx::OFBTimeMode::eCustom, frameRate);
+		fbx::OFBTime stopTime(lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds + 1, 0, 0, fbx::OFBTimeMode::eCustom, frameRate);
+
+		if (startTimeSec > 0.0) startTime.SetSecondDouble(startTimeSec);
+		if (endTimeSec > 0.0) stopTime.SetSecondDouble(endTimeSec);
+
+		doc.UpdateHeader();
+		doc.UpdateGlobalSettings(startTime.Get(), stopTime.Get(), frameRate);
+		doc.UpdateDefinitions();
+		doc.UpdateAnimationTakeTime(startTime.Get(), stopTime.Get());
 
 		// save to file
 		
@@ -318,7 +332,7 @@ EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, do
 		constexpr const char* outputFilename{ "c:\\work\\technocrane\\test-cgi.fbx" };
 		std::cout << "Writing " << outputFilename << std::endl;
 
-		lExporter.Initialize(outputFilename, false);
+		lExporter.Initialize(outputFilename, isBinary);
 		lExporter.Export(doc);
 #endif
 	}
@@ -365,7 +379,7 @@ int main(int argc, char* argv[]) {
 		sscanf_s(argv[3], "%lf", &startTime);
 		sscanf_s(argv[4], "%lf", &endTime);
 
-		TrimAndExportToFBX(buffer.data(), size, frameRate, startTime, endTime);
+		TrimAndExportToFBX(buffer.data(), size, frameRate, startTime, endTime, false);
 	}
 #endif
 	return 0;

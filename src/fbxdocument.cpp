@@ -13,6 +13,8 @@ using std::uint8_t;
 
 namespace fbx {
 
+	const char* CREATOR_TEXT = "OpenFBX Exporter";
+
 	FBXDocument::FBXDocument()
 	{
 		version = 7700;
@@ -24,6 +26,68 @@ namespace fbx {
 		m_objectMap.clear();
 	}
 
+	void FBXDocument::UpdateHeader()
+	{
+		for (size_t i = 0; i < m_root.children.size(); ++i)
+		{
+			if (strcmp(m_root.children[i].getNamePtr(), "Creator") == 0)
+			{
+				m_root.children[i].properties[0].Set(CREATOR_TEXT);
+			}
+		}
+		
+		if (auto header = FindNode("FBXHeaderExtension", &m_root))
+		{
+			if (auto creator = FindNode("Creator", header))
+			{
+				creator->properties[0].Set(CREATOR_TEXT);
+			}
+
+			if (auto sceneInfo = FindNode("SceneInfo", header))
+			{
+				if (auto props = FindNode("Properties70", sceneInfo))
+				{
+					for (size_t i = 0; i < props->children.size(); ++i)
+					{
+						if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "DocumentUrl") == 0)
+						{
+							props->children[i].properties[4].Set("TDCamera.fbx");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "SrcDocumentUrl") == 0)
+						{
+							props->children[i].properties[4].Set("TDCamera.fbx");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "Original|ApplicationVendor") == 0)
+						{
+							props->children[i].properties[4].Set("Technocrane");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "Original|ApplicationName") == 0)
+						{
+							props->children[i].properties[4].Set("Trimmer");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "Original|ApplicationVersion") == 0)
+						{
+							props->children[i].properties[4].Set("2023");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "LastSaved|ApplicationVendor") == 0)
+						{
+							props->children[i].properties[4].Set("Technocrane");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "LastSaved|ApplicationName") == 0)
+						{
+							props->children[i].properties[4].Set("Trimmer");
+						}
+						else if (strcmp(props->children[i].properties[0].to_string(true).c_str(), "LastSaved|ApplicationVersion") == 0)
+						{
+							props->children[i].properties[4].Set("2023");
+						}
+					}
+				}
+			}
+
+			
+		}
+	}
 
 	void FBXDocument::createHeader()
 	{
@@ -45,8 +109,8 @@ namespace fbx {
 			creationTimeStamp.addPropertyNode("Millisecond", (int32_t)917);
 			headerExtension.addChild(creationTimeStamp);
 		}
-		const char* creator = "FBX <Neill3d> Exporter (Beta)";
-		headerExtension.addPropertyNode("Creator", creator);
+		
+		headerExtension.addPropertyNode("Creator", CREATOR_TEXT);
 		{
 			FBXNode sceneInfo("SceneInfo");
 			sceneInfo.addProperty(std::vector<uint8_t>({ 'G','l','o','b','a','l','I','n','f','o',0,1,'S','c','e','n','e','I','n','f','o' }), 'S');
@@ -211,9 +275,43 @@ namespace fbx {
 		*/
 
 		m_root.addPropertyNode("CreationTime", GENERIC_CTIME);
-		m_root.addPropertyNode("Creator", creator);
+		m_root.addPropertyNode("Creator", CREATOR_TEXT);
 	}
 
+	void FBXDocument::UpdateGlobalSettings(fbx::i64 startTime, fbx::i64 stopTime, double fps)
+	{
+		if (auto global_settings = FindNode("GlobalSettings", &m_root))
+		{
+			if (auto props = FindNode("Properties70", global_settings))
+			{
+				for (size_t i = 0; i < props->children.size(); ++i)
+				{
+					std::string propName(props->children[i].properties[0].to_string(true));
+
+					if (strcmp(propName.c_str(), "DefaultCamera") == 0)
+					{
+						props->children[i].properties[4].Set("TDCamera");
+					}
+					else if (strcmp(propName.c_str(), "TimeSpanStart") == 0)
+					{
+						props->children[i].properties[4].Set(startTime);
+					}
+					else if (strcmp(propName.c_str(), "TimeSpanStop") == 0)
+					{
+						props->children[i].properties[4].Set(stopTime);
+					}
+					else if (strcmp(propName.c_str(), "TimeMode") == 0)
+					{
+						// convert frame rate into time mode enum
+						auto timeMode = OFBTime::ConvertFrameRateToTimeMode(fps);
+						props->children[i].properties[4].Set(static_cast<int32_t>(timeMode));
+					}
+					
+					// TODO: TimeSpanStop ?! TimeSpanStop
+				}
+			}
+		}
+	}
 
 	void FBXDocument::createGlobalSettings()
 	{
@@ -233,7 +331,7 @@ namespace fbx {
 		properties.addP70double("UnitScaleFactor", 1.0);
 		properties.addP70double("OriginalUnitScaleFactor", 1.0);
 		properties.addP70color("AmbientColor", 0.4, 0.4, 0.4);
-		properties.addP70string("DefaultCamera", "Producer Perspective");
+		properties.addP70string("DefaultCamera", "TDCamera");
 		properties.addP70enum("TimeMode", 6);
 		properties.addP70enum("TimeProtocol", 0);
 		properties.addP70enum("SnapOnFrameMode", 0);
@@ -280,6 +378,131 @@ namespace fbx {
 		// empty for now
 		FBXNode n("References");
 		m_root.addChild(n);
+	}
+
+	void FBXDocument::UpdateDefinitions()
+	{
+		// remove all MotionBuilder_System, MotionBuilder_Generic
+		int countToRemove = 0;
+
+		if (auto definitions = FindNode("Definitions", &m_root))
+		{
+			for (auto iter = begin(definitions->children); iter != end(definitions->children); ++iter)
+			{
+				if (strcmp(iter->getNamePtr(), "ObjectType") == 0)
+				{
+					if (strcmp(iter->properties[0].to_string(true).c_str(), "MotionBuilder_System") == 0
+						|| strcmp(iter->properties[0].to_string(true).c_str(), "MotionBuilder_Generic") == 0)
+					{
+						// TODO: remove such definitions!
+						countToRemove += iter->children[0].properties[0].AsInt();
+						definitions->children.erase(iter);
+						iter = begin(definitions->children);
+					}
+				}
+			}
+
+			if (auto countNode = FindNode("Count", definitions))
+			{
+				const int currentCount = countNode->properties[0].AsInt();
+				countNode->properties[0].Set(currentCount - countToRemove);
+			}
+		}
+
+		// remove all nodes
+		if (auto objects = FindNode("Objects", &m_root))
+		{
+			for (auto iter = begin(objects->children); iter != end(objects->children); ++iter)
+			{
+				if (strcmp(iter->getNamePtr(), "MotionBuilder_System") == 0
+					|| strcmp(iter->getNamePtr(), "MotionBuilder_Generic") == 0)
+				{
+					objects->children.erase(iter);
+					iter = begin(objects->children);
+				}
+			}
+		}
+	}
+
+	void FBXDocument::UpdateAnimationTakeTime(fbx::i64 startTime, fbx::i64 stopTime)
+	{
+		if (auto objects = FindNode("Objects", &m_root))
+		{
+			for (auto iter = begin(objects->children); iter != end(objects->children); ++iter)
+			{
+				if (strcmp(iter->getNamePtr(), "AnimationStack") == 0)
+				{
+					if (auto properties70 = FindNode("Properties70", &(*iter)))
+					{
+						std::vector<fbx::FBXNode>::iterator localStopIter, referenceStopIter;
+
+						for (auto propIter = begin(properties70->children); propIter != end(properties70->children); ++propIter)
+						{
+							std::string propname(propIter->properties[0].to_string(true));
+
+							if (strcmp(propname.c_str(), "MoBuAttrBlindData") == 0
+								|| strcmp(propname.c_str(), "MoBuRelationBlindData") == 0)
+							{
+								properties70->children.erase(propIter);
+								propIter = begin(properties70->children);
+							}
+							else if (strcmp(propname.c_str(), "LocalStop") == 0)
+							{
+								propIter->properties[4].Set(stopTime);
+								localStopIter = propIter;
+							}
+							else if (strcmp(propname.c_str(), "ReferenceStop") == 0)
+							{
+								propIter->properties[4].Set(stopTime);
+								referenceStopIter = propIter;
+							}
+						}
+
+						fbx::FBXNode localStartNode(localStopIter->getNamePtr(), localStopIter->properties);
+						localStartNode.properties[0].Set("LocalStart");
+						localStartNode.properties[4].Set(startTime);
+						fbx::FBXNode referenceStartNode(referenceStopIter->getNamePtr(), referenceStopIter->properties);
+						referenceStartNode.properties[0].Set("ReferenceStart");
+						referenceStartNode.properties[4].Set(startTime);
+
+						properties70->children.emplace(begin(properties70->children), localStartNode);
+						properties70->children.emplace(begin(properties70->children) + 2, referenceStartNode);
+					}
+				}
+				else if (strcmp(iter->getNamePtr(), "Model") == 0)
+				{
+					if (iter->properties.size() > 2
+						&& (strcmp(iter->properties[2].to_string(true).c_str(), "CameraSwitcher") == 0))
+					{
+						if (auto properties70 = FindNode("Properties70", &(*iter)))
+						{
+							for (auto propIter = begin(properties70->children); propIter != end(properties70->children); ++propIter)
+							{
+								std::string propname(propIter->properties[0].to_string(true));
+
+								if (strcmp(propname.c_str(), "MoBuAttrBlindData") == 0
+									|| strcmp(propname.c_str(), "MoBuRelationBlindData") == 0)
+								{
+									properties70->children.erase(propIter);
+									propIter = begin(properties70->children);
+								}
+							}
+						}
+					}	
+				}
+			}
+		}
+
+		if (auto takes = FindNode("Takes", &m_root))
+		{
+			printf("test\n");
+			// local time span
+			takes->children[1].children[1].properties[0].Set(startTime);
+			takes->children[1].children[1].properties[1].Set(stopTime);
+			// ref time span
+			takes->children[1].children[2].properties[0].Set(startTime);
+			takes->children[1].children[2].properties[1].Set(stopTime);
+		}
 	}
 
 	void FBXDocument::createDefinitions()

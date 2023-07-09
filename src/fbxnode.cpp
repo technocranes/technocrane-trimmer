@@ -26,6 +26,15 @@ FBXNode::FBXNode(const char *_name, const FBXProperty &p)
 	properties.push_back(p);
 }
 
+FBXNode::FBXNode(const char* _name, const std::vector<FBXProperty>& sourceProperties)
+	: name (_name)
+{
+	for (const auto& prop : sourceProperties)
+	{
+		properties.push_back(prop);
+	}
+}
+
 uint64_t FBXNode::read(std::ifstream &input, uint64_t start_offset, uint16_t version)
 {
     Reader reader(&input);
