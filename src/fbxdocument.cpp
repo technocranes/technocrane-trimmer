@@ -495,7 +495,6 @@ namespace fbx {
 
 		if (auto takes = FindNode("Takes", &m_root))
 		{
-			printf("test\n");
 			// local time span
 			takes->children[1].children[1].properties[0].Set(startTime);
 			takes->children[1].children[1].properties[1].Set(stopTime);

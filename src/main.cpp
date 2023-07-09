@@ -246,7 +246,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
  * \param size size of cgi data
  * \return status of the operation
  */
-EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTimeSec, double endTimeSec, bool isBinary) 
+EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTimeSec, double endTimeSec, int isBinary) 
 {
 	CGIConvert cgiConvert;
 	if (!cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate))
@@ -332,7 +332,7 @@ EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, do
 		constexpr const char* outputFilename{ "c:\\work\\technocrane\\test-cgi.fbx" };
 		std::cout << "Writing " << outputFilename << std::endl;
 
-		lExporter.Initialize(outputFilename, isBinary);
+		lExporter.Initialize(outputFilename, isBinary > 0);
 		lExporter.Export(doc);
 #endif
 	}

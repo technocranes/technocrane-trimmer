@@ -14,7 +14,7 @@ namespace fbx
 	class FBXNode;
 	class FBXProperty;
 
-#define EXPORTER_BUFFER_SIZE	2097152 // 2 Mb	 // 1 << 16
+#define EXPORTER_BUFFER_SIZE	10485760 // 10 Mb	 // 1 << 16
 
 	///////////////////////////////////////////////////////////////////////////////////
 	// Exporter class
