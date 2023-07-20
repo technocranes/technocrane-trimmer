@@ -330,7 +330,7 @@ uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 	auto pos = static_cast<uint32_t>(m_Stream->tellp());
 	if (pos != start_offset)
 	{
-		printf("scope lenth not reached, something is wrong (%zu)\n", (start_offset - pos));
+		printf("scope lenth not reached, something is wrong (%u)\n", static_cast<unsigned int>(start_offset - pos));
 	}
 
 	uint32_t propertyListLength = getBytesProperties(mNode);
@@ -386,7 +386,7 @@ uint32_t ExporterNodeBinary::Write(uint32_t start_offset, bool is_last)
 	pos = static_cast<uint32_t>(m_Stream->tellp());
 	if (pos != endOffset)
 	{
-		printf("scope lenth not reached, something is wrong (%zu)\n", (endOffset - pos));
+		printf("scope lenth not reached, something is wrong (%u)\n", static_cast<unsigned int>(endOffset - pos));
 	}
 	return bytes;
 }

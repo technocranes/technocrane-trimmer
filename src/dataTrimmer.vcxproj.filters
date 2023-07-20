@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="cgidata.cpp" />
+    <ClCompile Include="fbxdocument.cpp" />
+    <ClCompile Include="fbxexporter.cpp" />
+    <ClCompile Include="fbximporter.cpp" />
+    <ClCompile Include="fbxnode.cpp" />
+    <ClCompile Include="fbxproperty.cpp" />
+    <ClCompile Include="fbxtime.cpp" />
+    <ClCompile Include="fbxutil.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="miniz.cpp" />
+    <ClCompile Include="animationCurve.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="animationCurveNode.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="model.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="scene.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="fbxobject.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+    <ClCompile Include="nodeAttribute.cpp">
+      <Filter>public</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cgidata.h" />
+    <ClInclude Include="fbxdocument.h" />
+    <ClInclude Include="fbxexporter.h" />
+    <ClInclude Include="fbximporter.h" />
+    <ClInclude Include="fbxnode.h" />
+    <ClInclude Include="fbxproperty.h" />
+    <ClInclude Include="fbxtime.h" />
+    <ClInclude Include="fbxtypes.h" />
+    <ClInclude Include="fbxutil.h" />
+    <ClInclude Include="miniz.h" />
+    <ClInclude Include="fbxobject.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="animationCurve.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="animationCurveNode.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="fbxconnection.h" />
+    <ClInclude Include="scene.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="nodeAttribute.h">
+      <Filter>public</Filter>
+    </ClInclude>
+    <ClInclude Include="cgiConvert.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="public">
+      <UniqueIdentifier>{ec0db7a3-b482-4ab4-a121-f01cbb31b1dd}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

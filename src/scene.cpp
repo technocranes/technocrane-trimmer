@@ -132,7 +132,7 @@ bool Scene::Retrieve(FBXDocument* document)
 		}
 	}
 
-	if (m_Verbose) printf("curves %d, models %d\n", m_curves.size(), m_models.size());
+	if (m_Verbose) printf("curves %d, models %d\n", static_cast<int>(m_curves.size()), static_cast<int>(m_models.size()));
 
 	// parse connections and assign properties
 
