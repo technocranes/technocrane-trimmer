@@ -169,7 +169,7 @@ bool Exporter::WriteBinary(const FBXDocument &document, std::ostream* stream)
 {
 	bool lSuccess = true;
 
-	uint32_t version = document.getVersion();
+	uint32_t version = document.GetVersion();
 
 	Writer writer(stream);
 	writer.write("Kaydara FBX Binary  ");
@@ -226,7 +226,7 @@ bool Exporter::WriteBinary(const FBXDocument &document, std::ostream* stream)
 	}
 	*/
 
-	FBXNode *pRoot = document.getRootPtr();
+	FBXNode *pRoot = document.GetRootPtr();
 
 	ExporterNodeBinary exportNode(this, pRoot, stream, version);
 	uint32_t ret = exportNode.WriteChildren(offset, false);
@@ -244,9 +244,9 @@ bool Exporter::WriteASCII(const FBXDocument &document, std::ostream& stream)
 	stream << "; -----------------------------------" << std::endl;
 	stream << std::endl;
 
-	FBXNode *pRoot = document.getRootPtr();
+	FBXNode *pRoot = document.GetRootPtr();
 
-	ExporterNodeAscii exportNode(this, pRoot, &stream, document.getVersion());
+	ExporterNodeAscii exportNode(this, pRoot, &stream, document.GetVersion());
 	uint32_t ret = exportNode.WriteChildren(0, false);
 
 	return (ret > 0);

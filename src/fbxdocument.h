@@ -15,65 +15,61 @@ namespace fbx {
 		FBXObject* object;		// this is unpacked functional element
 	};
 
-class FBXDocument
-{
-public:
-    FBXDocument();
-	~FBXDocument();
-
-public:
-	// this is a raw document operations
-
-	// create some basic document nodes
-    void createHeader();
-	void createGlobalSettings();
-	void createDocuments();
-	void createReferences();
-	void createDefinitions();
-
-	void UpdateHeader();
-	void UpdateGlobalSettings(fbx::i64 startTime, fbx::i64 stopTime, double fps);
-	void UpdateDefinitions();
-	void UpdateAnimationTakeTime(fbx::i64 startTime, fbx::i64 stopTime);
-
-
-	FBXNode* FindNode(const char *name, const FBXNode *parent) const;
-
-	FBXNode		&getRoot() const
+	/// <summary>
+	/// a class that holds unpacked fbx nodes and connections
+	///  the class is used as a source data to retrive or store fbx file
+	///  by using FbxImporter, FbxExporter
+	/// </summary>
+	class FBXDocument
 	{
-		return (FBXNode&) m_root;
-	}
-	FBXNode		*getRootPtr() const
-	{
-		return (FBXNode*) &m_root;
-	}
+	public:
+		FBXDocument();
+		~FBXDocument();
 
-    //std::vector<FBXNode> nodes;
+	public:
+		// this is a raw document operations
 
-    std::uint32_t getVersion() const;
-    void print();
+		// create some basic document nodes
+		void CreateHeader();
+		void CreateGlobalSettings();
+		void CreateDocuments();
+		void CreateReferences();
+		void CreateDefinitions();
 
-	int64_t generate_uid() { return ++last_uid; }
+		void UpdateHeader();
+		void UpdateGlobalSettings(fbx::i64 startTime, fbx::i64 stopTime, double fps);
+		void UpdateDefinitions();
+		void UpdateAnimationTakeTime(fbx::i64 startTime, fbx::i64 stopTime);
 
-	bool ParseConnections();
-	bool ParseObjects();
 
-public:
+		FBXNode* FindNode(const char *name, const FBXNode *parent) const;
+
+		FBXNode		&GetRoot() const { return (FBXNode&) m_root; }
+		FBXNode		*GetRootPtr() const { return (FBXNode*) &m_root; }
+
+		std::uint32_t GetVersion() const;
+		void Print();
+
+		int64_t GenerateUid() { return ++last_uid; }
+
+		bool ParseConnections();
+		bool ParseObjects();
+
+
+	protected:
+		std::uint32_t version;
+		int64_t last_uid;
+
+		FBXNode			m_root;
+
+		std::unordered_map<i64, ObjectPair> m_objectMap;
+		std::vector<Connection> m_connections;
 	
+		void PopulateObjectMap(FBXNode& root);
+		void PopulateConnections(const FBXNode& root);
 
-protected:
-    std::uint32_t version;
-	int64_t last_uid;
-
-	FBXNode			m_root;
-
-	std::unordered_map<i64, ObjectPair> m_objectMap;
-	std::vector<Connection> m_connections;
-	friend class Scene;
-
-	void PopulateObjectMap(FBXNode& root);
-	void PopulateConnections(const FBXNode& root);
-};
+		friend class Scene;
+	};
 
 } // namespace fbx
 

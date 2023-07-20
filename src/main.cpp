@@ -90,7 +90,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	fbx::AnimationCurveNode* tcSecondNode = node->FindAnimationNodeByName("TCSecond");
 	fbx::AnimationCurveNode* tcFrameNode = node->FindAnimationNodeByName("TCFrame");
 	fbx::AnimationCurveNode* tcRateNode = node->FindAnimationNodeByName("TCRate");
-	fbx::AnimationCurveNode* tcSubframeNode = node->FindAnimationNodeByName("TCSubframe");
+	// TODO: TCSubframe
 
 	if (translationNode == nullptr || rotationNode == nullptr
 		|| !fieldOfViewNode || !focusDistanceNode || !zoomNode || !focusNode
@@ -123,8 +123,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	auto tcSecondCurve = tcSecondNode->GetCurve(0);
 	auto tcFrameCurve = tcFrameNode->GetCurve(0);
 	auto tcRateCurve = tcRateNode->GetCurve(0);
-	auto tcSubframeCurve = tcSubframeNode->GetCurve(0);
-
+	
 	const int keyCount = cgiConvert.GetNumberOfPackets();
 	const bool hasTrimRegion = (endTime > 0.0);
 	int realKeyCount = (hasTrimRegion) ? 0 : keyCount;
@@ -184,9 +183,6 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	tcRateCurve->SetKeyCount(1);
 	tcRateCurve->SetKeyConstFlags();
 	tcRateCurve->SetKey(0, fbx::OFBTime(0), static_cast<float>(fps));
-
-	const int flags = 24840;
-	constexpr float SPACE_SCALE{ 100.f };
 
 	realKeyCount = 0;
 	for (int i = 0; i < keyCount; ++i)

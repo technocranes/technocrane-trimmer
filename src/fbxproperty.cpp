@@ -310,6 +310,11 @@ void FBXProperty::GetData(void* buffer) const
     case Type::DOUBLE: memcpy(buffer, &value.f64, sizeof(value.f64)); break;
     case Type::LONG: memcpy(buffer, &value.i64, sizeof(value.i64)); break;
 
+    case Type::STRING:
+    case Type::STRING2:
+        memcpy(buffer, raw.data(), sizeof(uint8_t) * raw.size());
+        break;
+
     case Type::ARRAY_BOOLEAN:
         {
             bool* ptr = reinterpret_cast<bool*>(buffer);
@@ -356,6 +361,7 @@ void FBXProperty::GetData(void* buffer) const
             }
         } break;
     }
+    
 }
 
 string FBXProperty::to_string(bool skip_quotes, bool exit_on_zero_char) const
@@ -404,6 +410,8 @@ string FBXProperty::to_string(bool skip_quotes, bool exit_on_zero_char) const
                 case Type::ARRAY_LONG: s += std::to_string(e.i64); break;
                 case Type::ARRAY_INT: s += std::to_string(e.i32); break;
                 case Type::ARRAY_BOOLEAN: s += (e.boolean ? "true" : "false"); break;
+                default:
+                    throw std::string("Invalid array type");
                 }
 
                 hasPrev = true;

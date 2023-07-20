@@ -89,12 +89,12 @@ namespace fbx {
 		}
 	}
 
-	void FBXDocument::createHeader()
+	void FBXDocument::CreateHeader()
 	{
 		FBXNode headerExtension("FBXHeaderExtension");
 
 		headerExtension.addPropertyNode("FBXHeaderVersion", (int32_t)FBX_HEADER_VERSION);
-		headerExtension.addPropertyNode("FBXVersion", (int32_t)getVersion());
+		headerExtension.addPropertyNode("FBXVersion", (int32_t)GetVersion());
 		headerExtension.addPropertyNode("EncryptionType", (int32_t)0);
 
 		{
@@ -313,7 +313,7 @@ namespace fbx {
 		}
 	}
 
-	void FBXDocument::createGlobalSettings()
+	void FBXDocument::CreateGlobalSettings()
 	{
 		FBXNode global_settings("GlobalSettings");
 		global_settings.addPropertyNode("Version", 1000);
@@ -346,7 +346,7 @@ namespace fbx {
 		m_root.addChild(global_settings);
 	}
 
-	void FBXDocument::createDocuments()
+	void FBXDocument::CreateDocuments()
 	{
 		FBXNode docs("Documents");
 		docs.addPropertyNode("Count", int32_t(1));
@@ -354,7 +354,7 @@ namespace fbx {
 		FBXNode doc("Document");
 
 		// generate uid
-		int64_t uid = generate_uid();
+		const int64_t uid = GenerateUid();
 		doc.addProperty(uid);
 		doc.addProperty("");
 		doc.addProperty("Scene");
@@ -373,7 +373,7 @@ namespace fbx {
 		m_root.addChild(docs);
 	}
 
-	void FBXDocument::createReferences()
+	void FBXDocument::CreateReferences()
 	{
 		// empty for now
 		FBXNode n("References");
@@ -504,7 +504,7 @@ namespace fbx {
 		}
 	}
 
-	void FBXDocument::createDefinitions()
+	void FBXDocument::CreateDefinitions()
 	{
 		// basically this is just bookkeeping:
 		// determining how many of each type of object there are
@@ -535,18 +535,17 @@ namespace fbx {
 		m_root.addChild(defs);
 	}
 
-	std::uint32_t FBXDocument::getVersion() const
+	std::uint32_t FBXDocument::GetVersion() const
 	{
 		return version;
 	}
 
-	void FBXDocument::print()
+	void FBXDocument::Print()
 	{
 		cout << "{\n";
-		cout << "  \"version\": " << getVersion() << ",\n";
+		cout << "  \"version\": " << GetVersion() << ",\n";
 		cout << "  \"children\": [\n";
-		bool hasPrev = false;
-
+		
 		m_root.print("  ");
 
 		cout << "\n  ]\n}" << endl;

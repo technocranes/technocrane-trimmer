@@ -10,7 +10,11 @@ void FBXObject::Retreive(const FBXDocument& _document, const FBXNode& _element)
 	if (_element.getPropertiesCount() > 1)
 	{
 		const std::string name = _element.getProperties().at(1).to_string(true, true);
+#if defined(_WIN32)
+		strcpy_s(m_Name, sizeof(char)*128, name.c_str());
+#else
 		strcpy(m_Name, name.c_str());
+#endif
 	}
 	else
 	{

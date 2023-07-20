@@ -42,6 +42,9 @@ namespace fbx
 		}
 	};
 
+	/// <summary>
+	/// base unpacked data type of fbx node, the object represents a scene element
+	/// </summary>
 	struct FBXObject
 	{
 			enum class Type
@@ -69,7 +72,10 @@ namespace fbx
 
 			virtual Type GetType() const = 0;
 
-			
+			/// <summary>
+			/// a constructor with unique id
+			/// </summary>
+			/// <param name="id">unique id</param>
 			FBXObject(int64_t id)
 				: m_Id(id)
 			{}
@@ -79,49 +85,27 @@ namespace fbx
 			bool IsNode() const { return m_isNode; }
 			const char* GetName() const { return m_Name; }
 			bool HasName() const { return m_Name[0] != 0; }
-			/*
-
-			const FBXDocument& getScene() const;
-			FBXNodeView* resolveObjectLink(int idx) const;
-			FBXNodeView* resolveObjectLink(Type type, const char* property, int idx) const;
-			FBXNodeView* resolveObjectLinkReverse(Type type) const;
-			FBXNodeView* getParents(int idx) const;
-
 			
-
-
-			template <typename T> T* resolveObjectLink(int idx) const
-			{
-				return static_cast<T*>(resolveObjectLink(T::s_type, nullptr, idx));
-			}
-
-			uint64_t id;
-			
-			
-			const void* eval_data;
-			const void* render_data;
-
-			//bool Selected;
-			//PropertyString			Name;
-			//PropertyBool			Selected;
-
-			//PropertyList			mProperties;
-
-			// retrive properties values and connections
-			virtual bool Retrieve();
-			/*
-			void PropertyAdd(PropertyBase* pProperty)
-			{
-				mProperties.Add(pProperty);
-			}
-			*/
-
+			/// <summary>
+			/// raw FBXNode to be converted into a more logical and functional FBXObject based class 
+			/// </summary>
+			/// <param name="_document">fbx document with raw nodes and connections</param>
+			/// <param name="_element">source node to be converted into the object</param>
 			void Retreive(const FBXDocument& _document, const FBXNode& _element);
+			
+			/// <summary>
+			/// make a raw fbx node from the given FBXObject based class
+			/// </summary>
+			/// <param name="_document">fbx document with raw nodes and connections</param>
+			/// <param name="_element">raw element to preprare data from the given object</param>
 			void Store(FBXDocument& _document, FBXNode& _element);
 
-			virtual void OnRetreive(const FBXDocument& _document, const FBXNode& _element) = 0;
-			virtual void OnStore(FBXDocument& _document, FBXNode& _element) {}
-
+			/// <summary>
+			/// callback when given object is connected or being used as a parent for the new connection
+			/// </summary>
+			/// <param name="">type of connection event</param>
+			/// <param name="connectionObject">another object that is taking part in the connection</param>
+			/// <param name="connection">new connection data</param>
 			virtual void OnDataConnectionNotify(fbx::ConnectionEvent, FBXObject* connectionObject, const Connection* connection) {}
 
 			const NodeAttribute* GetNodeAttribute() const { return m_NodeAttribute; }
@@ -132,11 +116,10 @@ namespace fbx
 			int64_t m_Id{ 0 };
 			char m_Name[128]{ 0 };
 
-
-			//const FBXDocument& scene;
-			//const FBXNode& element;
 			const NodeAttribute* m_NodeAttribute{ nullptr };	// contains some specified class properties ontop of base class
 
+			virtual void OnRetreive(const FBXDocument& _document, const FBXNode& _element) = 0;
+			virtual void OnStore(FBXDocument& _document, FBXNode& _element) {}
 	};
 
 
@@ -185,10 +168,6 @@ namespace fbx
 	};
 
 	
-
-
-	
-
 
 	struct TakeInfo
 	{

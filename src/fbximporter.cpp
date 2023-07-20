@@ -76,7 +76,7 @@ bool Importer::Import(FBXDocument &document)
 	}
 
 	uint64_t start_offset = 27; // magic: 21+2, version: 4
-	FBXNode &root = document.getRoot();
+	FBXNode &root = document.GetRoot();
 
 	while (true)
 	{
