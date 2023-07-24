@@ -1,14 +1,11 @@
-- name: Setup Emscripten toolchain
-  # You may pin to the exact commit or the version.
-  # uses: mymindstorm/setup-emsdk@ab889da2abbcbb280f91ec4c215d3bb4f3a8f775
-  uses: mymindstorm/setup-emsdk@v12
-  with:
-    # Make sure to set a version number!
-    version: latest
-    # This is the name of the cache folder.
-    # The cache folder will be placed in the build directory,
-    #  so make sure it doesn't conflict with anything!
-    actions-cache-folder: 'emsdk-cache'
-    
-- name: Verify
-  run: emcc -v
+name: "emsdk"
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mymindstorm/setup-emsdk@v11
+
+      - name: Verify
+        run: emcc -v
