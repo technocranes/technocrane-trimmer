@@ -138,7 +138,7 @@ namespace fbx
 		AnimationCurveNode* m_Next{ nullptr };	// linked anim nodes under owner for different layers
 
 		FBXObject* m_Owner{ nullptr };
-		const FBXProperty* m_BoneLinkProperty;
+		const FBXProperty* m_BoneLinkProperty{ nullptr };
 
 		AnimationNodeType m_Mode{ ANIMATIONNODE_TYPE_CUSTOM };
 

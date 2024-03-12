@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 #include "cgidata.h"
 #include "fbxdocument.h"
 #include "fbximporter.h"
@@ -38,10 +39,10 @@
 /// <summary>
 /// Print to console information about raw *.cgi stream, like start / stop timecodes
 /// </summary>
-/// <param name="buffer"></param>
-/// <param name="size"></param>
-/// <param name="frameRate"></param>
-/// <returns></returns>
+/// <param name="buffer">a stream data buffer</param>
+/// <param name="size">size of a stream in bytes</param>
+/// <param name="frameRate">a given frame rate of packets in the stream</param>
+/// <returns>status of a print, 0 - successful</returns>
 EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate)
 {
 	CGIConvert cgiConvert;
@@ -57,6 +58,49 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate)
 			firstPacket.timeCode.frames);
 		printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
 			lastPacket.timeCode.frames);
+
+		// print out the longest data gaps
+
+		auto fn_getSec = [](uint32_t hours, uint32_t minutes, uint32_t seconds, uint32_t frames, double fps) -> double
+			{
+				return 3600.0 * static_cast<double>(hours) + 60.0 * static_cast<double>(minutes)
+					+ static_cast<double>(seconds) + std::min(1.0, static_cast<double>(frames) / fps);
+			};
+
+		std::vector<std::pair<int, float>> packetMag;
+		packetMag.reserve(cgiConvert.GetNumberOfPackets());
+
+		for (int i = 1; i < cgiConvert.GetNumberOfPackets(); ++i)
+		{
+			const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(i-1);
+			const CGIDataCartesian& thePacket = cgiConvert.GetPacket(i);
+
+			const double prevTime = fn_getSec(prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames, frameRate);
+			const double currTime = fn_getSec(thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames, frameRate);
+
+			packetMag.emplace_back(i, static_cast<float>(currTime - prevTime));
+		}
+
+		std::sort(begin(packetMag), end(packetMag), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
+			{
+				return a.second > b.second;
+			});
+
+		constexpr int max_printed_gaps = 6;
+		constexpr float time_thres{ 1.0f };
+		for (int i = 0; i < max_printed_gaps; ++i)
+		{
+			if (packetMag[i + 1].second < time_thres)
+				break;
+
+			const int packetIndex = packetMag[i + 1].first;
+			const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(packetIndex - 1);
+			const CGIDataCartesian& thePacket = cgiConvert.GetPacket(packetIndex);
+
+			printf("Recorded gap [duration %.2f sec] from timecode %d:%d:%d:%d to timecode %d:%d:%d:%d\n", packetMag[i + 1].second,
+				prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames,
+				thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames);
+		}
 	}
 	return 0;
 }
@@ -128,6 +172,9 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	const bool hasTrimRegion = (endTime > 0.0);
 	int realKeyCount = (hasTrimRegion) ? 0 : keyCount;
 
+	timeCodeStruct leftTimeCode = cgiConvert.GetPacket(0).timeCode;
+	timeCodeStruct rightTimeCode = cgiConvert.GetPacket(0).timeCode;
+
 	if (hasTrimRegion)
 	{
 		for (int i = 0; i < keyCount; ++i)
@@ -138,17 +185,28 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 			// TRIM OPERATION
 			const double timeSec = time.GetSecondDouble();
 			if (timeSec < startTime)
+			{
+				leftTimeCode = packet.timeCode;
 				continue;
+			}
 			else if (timeSec > endTime)
+			{
+				rightTimeCode = packet.timeCode;
 				break;
-
+			}
+			
 			realKeyCount += 1;
 		}
 	}
 
 	if (realKeyCount <= 0)
+	{
+		printf("no keyframes in a given trim range!\n");
+		printf("nearest left timecode - %d:%d:%d:%d\n", leftTimeCode.hours, leftTimeCode.minutes, leftTimeCode.seconds, leftTimeCode.frames);
+		printf("nearest right timecode - %d:%d:%d:%d\n", rightTimeCode.hours, rightTimeCode.minutes, rightTimeCode.seconds, rightTimeCode.frames);
 		return false;
-
+	}
+	
 	posX->SetKeyCount(realKeyCount);
 	posY->SetKeyCount(realKeyCount);
 	posZ->SetKeyCount(realKeyCount);
@@ -367,7 +425,7 @@ int main(int argc, char* argv[]) {
 
 	fstream.seekg(0, std::ios::beg);
 
-	std::vector<uint8_t> buffer(size+1, 0);
+	std::vector<uint8_t> buffer(static_cast<size_t>(size)+1, 0);
 	if (fstream.read((char*)buffer.data(), size))
 	{
 		double frameRate, startTime, endTime;
@@ -375,7 +433,9 @@ int main(int argc, char* argv[]) {
 		sscanf_s(argv[3], "%lf", &startTime);
 		sscanf_s(argv[4], "%lf", &endTime);
 
-		TrimAndExportToFBX(buffer.data(), size, frameRate, startTime, endTime, false);
+		//PrintCGIInfo(buffer.data(), static_cast<size_t>(size), frameRate);
+
+		TrimAndExportToFBX(buffer.data(), static_cast<size_t>(size), frameRate, startTime, endTime, false);
 	}
 #endif
 	return 0;

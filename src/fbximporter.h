@@ -6,7 +6,7 @@
 
 namespace fbx
 {
-#define IMPORTER_BUFFER_SIZE	204800 // 200 kb	 // 1 << 16
+#define IMPORTER_BUFFER_SIZE	409600 // 200 kb	 // 1 << 16
 
 	// forward declaration
 	class FBXDocument;

@@ -122,7 +122,8 @@ namespace fbx
 	{
 		// TODO: fps according to a time mode or use default system timemode ?!
 		//double fps = 30.0;
-		double secs = 3600.0 * pHour + 60.0 * (double)pMinute + (double)pSecond + pFrame / fps;
+		double secs = 3600.0 * static_cast<double>(pHour) + 60.0 * static_cast<double>(pMinute) 
+			+ static_cast<double>(pSecond) + std::min(1.0, static_cast<double>(pFrame) / fps);
 		SetSecondDouble(secs);
 	}
 

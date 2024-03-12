@@ -103,7 +103,7 @@ public:
     size_t GetCount() const;
 private:
     Type type;
-    FBXPropertyValue value;
+    FBXPropertyValue value{ 0 };
     std::vector<uint8_t> raw;
     std::vector<FBXPropertyValue> values;
 };

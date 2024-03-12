@@ -54,11 +54,11 @@ public:
 
 	std::pair<float, float> ConvertFOV(const CGIDataCartesian& cgiData) const
 	{
-		float focalLength = ConvertFocalLength(cgiData);
+		const double focalLength = static_cast<double>(ConvertFocalLength(cgiData));
 		//const double pi=3.14159265358979323846;
-		double fovHorizontal = 2.0f * 180 * atan(0.5 * this->m_chipWidth / focalLength) / pi; // tan (fovh/2) = chipsize/2 / focal length
-		double fovVertical = 2.0f * 180 * atan(0.5 * this->m_chipHeight / focalLength) / pi;
-		return std::pair<float, float>(fovHorizontal, fovVertical);
+		const double fovHorizontal = 2.0 * 180.0 * atan(0.5 * this->m_chipWidth / focalLength) / pi; // tan (fovh/2) = chipsize/2 / focal length
+		const double fovVertical = 2.0 * 180.0 * atan(0.5 * this->m_chipHeight / focalLength) / pi;
+		return std::pair<float, float>(static_cast<float>(fovHorizontal), static_cast<float>(fovVertical));
 	}
 
 	float ConvertFocusDistance(const CGIDataCartesian& cgiData) const
