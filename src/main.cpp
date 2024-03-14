@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <array>
 #include <algorithm>
 #include "cgidata.h"
 #include "fbxdocument.h"
@@ -43,65 +44,133 @@
 /// <param name="size">size of a stream in bytes</param>
 /// <param name="frameRate">a given frame rate of packets in the stream</param>
 /// <returns>status of a print, 0 - successful</returns>
-EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate)
+EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool printTimecodes=false)
 {
 	CGIConvert cgiConvert;
 	cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate));
 
 	printf("Loaded packets - %d\n", cgiConvert.GetNumberOfPackets());
-	if (!cgiConvert.IsEmpty())
+	if (cgiConvert.IsEmpty())
+		return -1;
+
+	const CGIDataCartesian& firstPacket = cgiConvert.GetPacket(0);
+	const CGIDataCartesian& lastPacket = cgiConvert.GetPacket(cgiConvert.GetNumberOfPackets() - 1);
+
+	printf("Start TimeCode %d:%d:%d:%d\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
+		firstPacket.timeCode.frames);
+	printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
+		lastPacket.timeCode.frames);
+
+	constexpr unsigned int maxEstimatedFrameRates{ 10 };
+	int estimatedFrameRateCounter{ 0 };
+	std::array<int, maxEstimatedFrameRates> estimatedFrameRates;
+	estimatedFrameRates.fill(-1);
+
+	if (printTimecodes)
 	{
-		const CGIDataCartesian& firstPacket = cgiConvert.GetPacket(0);
-		const CGIDataCartesian& lastPacket = cgiConvert.GetPacket(cgiConvert.GetNumberOfPackets() - 1);
+#ifndef __EMSCRIPTEN__
+		FILE* f = nullptr;
+		fopen_s(&f, "C://work//technocrane//timecodes.txt", "w+");
 
-		printf("Start TimeCode %d:%d:%d:%d\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
-			firstPacket.timeCode.frames);
-		printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
-			lastPacket.timeCode.frames);
-
-		// print out the longest data gaps
-
-		auto fn_getSec = [](uint32_t hours, uint32_t minutes, uint32_t seconds, uint32_t frames, double fps) -> double
-			{
-				return 3600.0 * static_cast<double>(hours) + 60.0 * static_cast<double>(minutes)
-					+ static_cast<double>(seconds) + std::min(1.0, static_cast<double>(frames) / fps);
-			};
-
-		std::vector<std::pair<int, float>> packetMag;
-		packetMag.reserve(cgiConvert.GetNumberOfPackets());
-
-		for (int i = 1; i < cgiConvert.GetNumberOfPackets(); ++i)
+		char temp[128]{ 0 };
+		for (int i = 0; i < cgiConvert.GetNumberOfPackets(); ++i)
 		{
-			const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(i-1);
-			const CGIDataCartesian& thePacket = cgiConvert.GetPacket(i);
+			const CGIDataCartesian& packet = cgiConvert.GetPacket(i);
 
-			const double prevTime = fn_getSec(prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames, frameRate);
-			const double currTime = fn_getSec(thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames, frameRate);
+			memset(temp, 0, sizeof(char) * 128);
+			sprintf_s(temp, sizeof(char) * 128, "%d:%d:%d:%d\n", packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds,
+				packet.timeCode.frames);
 
-			packetMag.emplace_back(i, static_cast<float>(currTime - prevTime));
+			fwrite(temp, sizeof(char), strlen(temp), f);
 		}
 
-		std::sort(begin(packetMag), end(packetMag), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
-			{
-				return a.second > b.second;
-			});
+		fclose(f);
+#endif
+	}
+	
+	// print out the longest data gaps
 
-		constexpr int max_printed_gaps = 6;
-		constexpr float time_thres{ 1.0f };
+	auto fn_getSec = [](uint32_t hours, uint32_t minutes, uint32_t seconds, uint32_t frames, double fps) -> double
+		{
+			return 3600.0 * static_cast<double>(hours) + 60.0 * static_cast<double>(minutes)
+				+ static_cast<double>(seconds) + std::min(1.0, static_cast<double>(frames) / fps);
+		};
+
+	std::vector<std::pair<int, float>> packetMag;
+	packetMag.reserve(cgiConvert.GetNumberOfPackets());
+
+	for (int i = 1; i < cgiConvert.GetNumberOfPackets(); ++i)
+	{
+		const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(i-1);
+		const CGIDataCartesian& thePacket = cgiConvert.GetPacket(i);
+
+		const double prevTime = fn_getSec(prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames, frameRate);
+		const double currTime = fn_getSec(thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames, frameRate);
+
+		packetMag.emplace_back(i, static_cast<float>(currTime - prevTime));
+		if (thePacket.timeCode.frames == 0)
+			estimatedFrameRateCounter = (estimatedFrameRateCounter + 1) % maxEstimatedFrameRates;
+		const int packetFrameRate = 1 + static_cast<int>(thePacket.timeCode.frames);
+		estimatedFrameRates[estimatedFrameRateCounter] = std::max(estimatedFrameRates[estimatedFrameRateCounter], packetFrameRate);
+	}
+
+	//
+	// compute estimated frame rate
+
+	int numberOfEstimations = 0;
+	for (int i = 0; i < maxEstimatedFrameRates; ++i)
+	{
+		if (estimatedFrameRates[i] > 0) numberOfEstimations += 1;
+	}
+
+	std::sort(begin(estimatedFrameRates), end(estimatedFrameRates), [](const int a, const int b)
+		{
+			return a > b;
+		});
+
+	int myEstimatedRate = static_cast<int>(frameRate);
+	if (numberOfEstimations > 0)
+	{
+		const int index = std::min(numberOfEstimations-1, 5);
+		myEstimatedRate = estimatedFrameRates[index];
+	}
+
+	printf("User defined frame rate %d, the data estimated frame rate %d\n", static_cast<int>(frameRate), myEstimatedRate);
+
+	//
+	// compute gaps
+
+	std::sort(begin(packetMag), end(packetMag), [](const std::pair<int, float>& a, const std::pair<int, float>& b)
+		{
+			return a.second > b.second;
+		});
+
+	constexpr int max_printed_gaps = 6;
+	constexpr float time_thres{ 1.0f };
+	const bool hasAnyGap = (!packetMag.empty() && packetMag[0].second >= time_thres);
+
+	if (hasAnyGap)
+	{
+		printf("== Data Gaps ==\n");
+
 		for (int i = 0; i < max_printed_gaps; ++i)
 		{
-			if (packetMag[i + 1].second < time_thres)
+			if (packetMag[i].second < time_thres)
 				break;
 
-			const int packetIndex = packetMag[i + 1].first;
+			const int packetIndex = packetMag[i].first;
 			const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(packetIndex - 1);
 			const CGIDataCartesian& thePacket = cgiConvert.GetPacket(packetIndex);
 
-			printf("Recorded gap [duration %.2f sec] from timecode %d:%d:%d:%d to timecode %d:%d:%d:%d\n", packetMag[i + 1].second,
+			printf("No Data between timecode %d:%d:%d:%d and timecode %d:%d:%d:%d, gap duration %.2f seconds\n",
 				prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames,
-				thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames);
+				thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames,
+				packetMag[i].second);
 		}
+
+		printf("==========\n");
 	}
+		
 	return 0;
 }
 
@@ -116,7 +185,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 
 	if (node->GetNodeAttribute() == nullptr)
 	{
-		printf("node attribute is empty\n");
+		printf("ERROR: node attribute is empty\n");
 		return false;
 	}
 
@@ -140,7 +209,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 		|| !fieldOfViewNode || !focusDistanceNode || !zoomNode || !focusNode
 		|| !tcHourNode || !tcMinuteNode || !tcSecondNode || !tcFrameNode)
 	{
-		printf("not all template animation nodes are found!\n");
+		printf("ERROR: not all template animation nodes are found!\n");
 		return false;
 	}
 		
@@ -201,9 +270,9 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 
 	if (realKeyCount <= 0)
 	{
-		printf("no keyframes in a given trim range!\n");
-		printf("nearest left timecode - %d:%d:%d:%d\n", leftTimeCode.hours, leftTimeCode.minutes, leftTimeCode.seconds, leftTimeCode.frames);
-		printf("nearest right timecode - %d:%d:%d:%d\n", rightTimeCode.hours, rightTimeCode.minutes, rightTimeCode.seconds, rightTimeCode.frames);
+		printf("ERROR: your defined timecode range doesn't contain any keys!\n");
+		printf("  Please use timecode before %d:%d:%d:%d or after %d:%d:%d:%d\n", leftTimeCode.hours, leftTimeCode.minutes, leftTimeCode.seconds, leftTimeCode.frames,
+			rightTimeCode.hours, rightTimeCode.minutes, rightTimeCode.seconds, rightTimeCode.frames);
 		return false;
 	}
 	
@@ -300,13 +369,13 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
  * \param size size of cgi data
  * \return status of the operation
  */
-EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTimeSec, double endTimeSec, int isBinary) 
+EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, double startTimeSec, double endTimeSec, int isBinary, bool isVerbose=false) 
 {
 	CGIConvert cgiConvert;
 	if (!cgiConvert.LoadPackets(buffer, size, static_cast<float>(frameRate))
 		|| cgiConvert.IsEmpty())
 	{
-		printf("Faled to load cgi stream packets or stream has no packets!\n");
+		printf("ERROR: Faled to load cgi stream packets or stream has no packets!\n");
 		return -1;
 	}
 
@@ -321,33 +390,39 @@ EXTERN int TrimAndExportToFBX(uint8_t* buffer, size_t size, double frameRate, do
 #else
 	constexpr const char* templateFilename{ "C:\\work\\technocrane\\tdcamera.fbx" };
 #endif
-	printf("import a template file - %s\n", templateFilename);
+	if (isVerbose)
+		printf("import a template file - %s\n", templateFilename);
 	bool lSuccess = lImporter.Initialize(templateFilename);
 
 	if (lSuccess)
 	{
-		std::cout << "Import" << std::endl;
+		if (isVerbose)
+			std::cout << "Import" << std::endl;
 		lImporter.Import(doc);
 
-		std::cout << "Parse" << std::endl;
+		if (isVerbose)
+			std::cout << "Parse" << std::endl;
 		// prepare scene data
 		doc.ParseConnections();
 		doc.ParseObjects();
 
 		// modify keyframes
-		
-		std::cout << "Scene retrieve" << std::endl;
+		if (isVerbose)
+			std::cout << "Scene retrieve" << std::endl;
 		fbx::Scene scene;
 		scene.Retrieve(&doc);
 
-		std::cout << "Prepare camera animation" << std::endl;
+		if (isVerbose)
+			std::cout << "Prepare camera animation" << std::endl;
 		if (!PrepareCameraAnimation(scene, cgiConvert, startTimeSec, endTimeSec, frameRate))
 		{
-			std::cout << "Failed to prepare camera animation" << std::endl;
+			if (isVerbose)
+				std::cout << "Failed to prepare camera animation" << std::endl;
 			return -1;
 		}
 
-		std::cout << "Scene store" << std::endl;
+		if (isVerbose)
+			std::cout << "Scene store" << std::endl;
 		scene.Store(&doc);
 
 		// modify doc global information
@@ -433,7 +508,7 @@ int main(int argc, char* argv[]) {
 		sscanf_s(argv[3], "%lf", &startTime);
 		sscanf_s(argv[4], "%lf", &endTime);
 
-		//PrintCGIInfo(buffer.data(), static_cast<size_t>(size), frameRate);
+		PrintCGIInfo(buffer.data(), static_cast<size_t>(size), frameRate);
 
 		TrimAndExportToFBX(buffer.data(), static_cast<size_t>(size), frameRate, startTime, endTime, false);
 	}
