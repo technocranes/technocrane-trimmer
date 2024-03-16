@@ -56,9 +56,9 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 	const CGIDataCartesian& firstPacket = cgiConvert.GetPacket(0);
 	const CGIDataCartesian& lastPacket = cgiConvert.GetPacket(cgiConvert.GetNumberOfPackets() - 1);
 
-	printf("Start TimeCode %d:%d:%d:%d\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
+	printf("Start TimeCode %u:%u:%u:%u\n", firstPacket.timeCode.hours, firstPacket.timeCode.minutes, firstPacket.timeCode.seconds,
 		firstPacket.timeCode.frames);
-	printf("End TimeCode %d:%d:%d:%d\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
+	printf("End TimeCode %u:%u:%u:%u\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
 		lastPacket.timeCode.frames);
 
 	constexpr unsigned int maxEstimatedFrameRates{ 10 };
@@ -70,21 +70,23 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 	{
 #ifndef __EMSCRIPTEN__
 		FILE* f = nullptr;
-		fopen_s(&f, "C://work//technocrane//timecodes.txt", "w+");
-
-		char temp[128]{ 0 };
-		for (int i = 0; i < cgiConvert.GetNumberOfPackets(); ++i)
+		errno_t err = fopen_s(&f, "C://work//technocrane//timecodes.txt", "w+");
+		if (err == 0 && f != nullptr)
 		{
-			const CGIDataCartesian& packet = cgiConvert.GetPacket(i);
+			char temp[128]{ 0 };
+			for (int i = 0; i < cgiConvert.GetNumberOfPackets(); ++i)
+			{
+				const CGIDataCartesian& packet = cgiConvert.GetPacket(i);
 
-			memset(temp, 0, sizeof(char) * 128);
-			sprintf_s(temp, sizeof(char) * 128, "%d:%d:%d:%d\n", packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds,
-				packet.timeCode.frames);
+				memset(temp, 0, sizeof(char) * 128);
+				sprintf_s(temp, sizeof(char) * 128, "%u:%u:%u:%u\n", packet.timeCode.hours, packet.timeCode.minutes, packet.timeCode.seconds,
+					packet.timeCode.frames);
 
-			fwrite(temp, sizeof(char), strlen(temp), f);
+				fwrite(temp, sizeof(char), strlen(temp), f);
+			}
+
+			fclose(f);
 		}
-
-		fclose(f);
 #endif
 	}
 	
@@ -162,7 +164,7 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 			const CGIDataCartesian& prevPacket = cgiConvert.GetPacket(packetIndex - 1);
 			const CGIDataCartesian& thePacket = cgiConvert.GetPacket(packetIndex);
 
-			printf("No Data between timecode %d:%d:%d:%d and timecode %d:%d:%d:%d, gap duration %.2f seconds\n",
+			printf("No Data between timecode %u:%u:%u:%u and timecode %u:%u:%u:%u, gap duration %.2f seconds\n",
 				prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames,
 				thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames,
 				packetMag[i].second);
@@ -271,7 +273,7 @@ bool PrepareCameraAnimation(fbx::Scene& scene, CGIConvert& cgiConvert, double st
 	if (realKeyCount <= 0)
 	{
 		printf("ERROR: your defined timecode range doesn't contain any keys!\n");
-		printf("  Please use timecode before %d:%d:%d:%d or after %d:%d:%d:%d\n", leftTimeCode.hours, leftTimeCode.minutes, leftTimeCode.seconds, leftTimeCode.frames,
+		printf("  Please use timecode before %u:%u:%u:%u or after %u:%u:%u:%u\n", leftTimeCode.hours, leftTimeCode.minutes, leftTimeCode.seconds, leftTimeCode.frames,
 			rightTimeCode.hours, rightTimeCode.minutes, rightTimeCode.seconds, rightTimeCode.frames);
 		return false;
 	}

@@ -10,7 +10,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>c:\\work\\technocrane\\3sections.cgi 30.0 1.0 11.0</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>c:\\work\\technocrane\\2023-11-28--09-35--35-65.cgi 25.0 300.0 360.0</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Emscripten'">

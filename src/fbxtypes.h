@@ -103,6 +103,9 @@ namespace fbx
 		{
 			return m[col * 4 + row];
 		}
+
+		//! Time constant: Zero.
+		static const OFBMatrix Identity;
 	};
 
 	// Common independant definitions

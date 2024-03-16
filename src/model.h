@@ -115,20 +115,20 @@ namespace fbx
 		bool evalLocal(OFBMatrix* result, const OFBVector3& translation, const OFBVector3& rotation, const OFBVector3& scaling) const;
 
 		//
-		OFBMatrix			m_GlobalCache;
-		OFBMatrix			m_LocalCache;
-		OFBTime				m_CacheTime;
+		OFBMatrix			m_GlobalCache = OFBMatrix::Identity;
+		OFBMatrix			m_LocalCache = OFBMatrix::Identity;
+		OFBTime				m_CacheTime = OFBTime::Zero;
 
 		//
-		Model* m_Parent;
+		Model* m_Parent{ nullptr };
 		//std::vector<Model*>						mChildren;
 
 
-		Model*	m_FirstChild;
+		Model* m_FirstChild{ nullptr };
 
 		// sibling children under a parent
-		Model*	m_Next;
-		Model*	m_Prev;
+		Model* m_Next{ nullptr };
+		Model* m_Prev{ nullptr };
 
 		std::vector<AnimationCurveNode*>		m_AnimationNodes;
 	};

@@ -173,6 +173,7 @@
     <ClCompile Include="fbxobject.cpp" />
     <ClCompile Include="fbxproperty.cpp" />
     <ClCompile Include="fbxtime.cpp" />
+    <ClCompile Include="fbxtypes.cpp" />
     <ClCompile Include="fbxutil.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="miniz.cpp" />

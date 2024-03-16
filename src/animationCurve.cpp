@@ -6,11 +6,12 @@ using namespace fbx;
 
 struct AnimationCurveImpl : AnimationCurve
 {
+	/// <summary>
+	/// a constructor
+	/// </summary>
 	AnimationCurveImpl(int64_t id)
 		: AnimationCurve(id)
 	{
-		m_LastEvalTime = OFBTime::MinusInfinity;
-		m_LastEvalValue = 0.0f;
 	}
 
 	double Evaluate(const OFBTime& time) const override
@@ -103,8 +104,8 @@ struct AnimationCurveImpl : AnimationCurve
 	std::vector<int32_t>	m_Flags;
 
 	// cache
-	OFBTime		m_LastEvalTime;
-	float		m_LastEvalValue;
+	OFBTime		m_LastEvalTime = OFBTime::MinusInfinity;
+	float		m_LastEvalValue = 0.0f;
 
 	Type GetType() const override { return Type::ANIMATION_CURVE; }
 

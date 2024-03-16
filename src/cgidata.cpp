@@ -141,7 +141,7 @@ void time2TimeCodeAPI(struct timeCodeAPIStruct *TC, double seconds, int TCType){
 	double integralPart;
 	double secondsFrac = modf(seconds, &integralPart), minutesFrac, hoursFrac, daysFrac;
 	(void)TCType;
-
+	
 	TCType = TCTYPE_PAL;
 	TC->frames   = (u8)(secondsFrac  * 25.0);
 	minutesFrac = modf(integralPart / 60.0, &integralPart);
@@ -182,6 +182,7 @@ struct timeCodeAPIStruct timeCode2TCAPI(const struct timeCodeStruct *TC){
 	TCRet.isLTC           = TC->isLTC;
 	TCRet.evenFieldMark   = TC->evenFieldMark;
 	TCRet.phaseCorrection = TC->phaseCorrection;
+	TCRet.userBits = 0u;
 	return(TCRet);
 }
 

@@ -106,9 +106,9 @@ public:
 private:
 
 	// 
-	bool                          m_fovAnimation;
-	double                        m_chipWidth;
-	double                        m_chipHeight;
+	bool                          m_fovAnimation{ true };
+	double                        m_chipWidth{ 640.0 };
+	double                        m_chipHeight{ 480.0 };
 
 	// transform between TD-Coordinate system and MAYA/MB
 	bool                          m_trafoToMayaCoordinateSystem{ true };

@@ -32,6 +32,7 @@
     <ClCompile Include="nodeAttribute.cpp">
       <Filter>public</Filter>
     </ClCompile>
+    <ClCompile Include="fbxtypes.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="cgidata.h" />
