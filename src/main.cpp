@@ -61,11 +61,6 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 	printf("End TimeCode %u:%u:%u:%u\n", lastPacket.timeCode.hours, lastPacket.timeCode.minutes, lastPacket.timeCode.seconds,
 		lastPacket.timeCode.frames);
 
-	constexpr unsigned int maxEstimatedFrameRates{ 10 };
-	int estimatedFrameRateCounter{ 0 };
-	std::array<int, maxEstimatedFrameRates> estimatedFrameRates;
-	estimatedFrameRates.fill(-1);
-
 	if (printTimecodes)
 	{
 #ifndef __EMSCRIPTEN__
@@ -98,8 +93,15 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 				+ static_cast<double>(seconds) + std::min(1.0, static_cast<double>(frames) / fps);
 		};
 
+	// <frame rate, number of packets used it>
 	std::vector<std::pair<int, float>> packetMag;
-	packetMag.reserve(cgiConvert.GetNumberOfPackets());
+	
+	constexpr int max_printed_gaps = 6;
+	constexpr float time_thres{ 1.0f };
+	
+	std::unordered_map<int, int> packetRates;
+
+	// calculate all combinations of timecodes and how many frames are in use
 
 	for (int i = 1; i < cgiConvert.GetNumberOfPackets(); ++i)
 	{
@@ -109,32 +111,42 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 		const double prevTime = fn_getSec(prevPacket.timeCode.hours, prevPacket.timeCode.minutes, prevPacket.timeCode.seconds, prevPacket.timeCode.frames, frameRate);
 		const double currTime = fn_getSec(thePacket.timeCode.hours, thePacket.timeCode.minutes, thePacket.timeCode.seconds, thePacket.timeCode.frames, frameRate);
 
-		packetMag.emplace_back(i, static_cast<float>(currTime - prevTime));
-		if (thePacket.timeCode.frames == 0)
-			estimatedFrameRateCounter = (estimatedFrameRateCounter + 1) % maxEstimatedFrameRates;
-		const int packetFrameRate = 1 + static_cast<int>(thePacket.timeCode.frames);
-		estimatedFrameRates[estimatedFrameRateCounter] = std::max(estimatedFrameRates[estimatedFrameRateCounter], packetFrameRate);
+		if (currTime - prevTime < 1.0f)
+		{
+			if (prevPacket.timeCode.frames > thePacket.timeCode.frames)
+			{
+				const int lastFrameRate = prevPacket.timeCode.frames + 1;
+				auto iter = packetRates.find(lastFrameRate);
+				if (iter != end(packetRates))
+				{
+					iter->second += 1;
+				}
+				else
+				{
+					packetRates.emplace(lastFrameRate, 1);
+				}
+			}
+		}
+		
+		if ((currTime - prevTime) > time_thres)
+		{
+			packetMag.emplace_back(i, static_cast<float>(currTime - prevTime));
+		}
 	}
 
 	//
 	// compute estimated frame rate
 
-	int numberOfEstimations = 0;
-	for (int i = 0; i < maxEstimatedFrameRates; ++i)
-	{
-		if (estimatedFrameRates[i] > 0) numberOfEstimations += 1;
-	}
+	int myEstimatedRate = 0;
+	int frameRatePackets = 0;
 
-	std::sort(begin(estimatedFrameRates), end(estimatedFrameRates), [](const int a, const int b)
+	for (const auto& iter : packetRates)
+	{
+		if (iter.second > frameRatePackets)
 		{
-			return a > b;
-		});
-
-	int myEstimatedRate = static_cast<int>(frameRate);
-	if (numberOfEstimations > 0)
-	{
-		const int index = std::min(numberOfEstimations-1, 5);
-		myEstimatedRate = estimatedFrameRates[index];
+			myEstimatedRate = iter.first;
+			frameRatePackets = iter.second;
+		}
 	}
 
 	printf("User defined frame rate %d, the data estimated frame rate %d\n", static_cast<int>(frameRate), myEstimatedRate);
@@ -147,10 +159,7 @@ EXTERN int PrintCGIInfo(uint8_t* buffer, size_t size, double frameRate, bool pri
 			return a.second > b.second;
 		});
 
-	constexpr int max_printed_gaps = 6;
-	constexpr float time_thres{ 1.0f };
 	const bool hasAnyGap = (!packetMag.empty() && packetMag[0].second >= time_thres);
-
 	if (hasAnyGap)
 	{
 		printf("== Data Gaps ==\n");

@@ -6,23 +6,93 @@
 #include "cgidata.h"
 #include "fbxtypes.h"
 
+/// <summary>
+/// A wrapper class around input bytes array to view it as array of desired structured data
+/// </summary>
+template<typename T>
+class ConstArrayView
+{
+public:
+	ConstArrayView()
+	{}
+
+	ConstArrayView(uint8_t* buffer, size_t size)
+	{
+		m_Array = reinterpret_cast<T*>(buffer);
+		m_Count = size / sizeof(T);
+	}
+
+	ConstArrayView(T* buffer, size_t count)
+	{
+		m_Array = buffer;
+		m_Count = count;
+	}
+
+	const T& At(const size_t index) const
+	{
+		return m_Array[index];
+	}
+
+	const T& First() const
+	{
+		return m_Array[0];
+	}
+
+	const T& Last() const
+	{
+		return m_Array[m_Count - 1];
+	}
+
+	const size_t Count() const
+	{
+		return m_Count;
+	}
+
+	bool IsEmpty() const { return m_Count == 0; }
+
+private:
+	T* m_Array{ nullptr };
+	size_t	m_Count{ 0 };
+};
+
+/// <summary>
+/// extract some structured data information CGIDataCartesian from the input bytes
+///  Additional helper methods for a data processing
+/// Packets are auto sorted by the timecode
+///  The class has pointers to a provided input data, 
+/// you have to keep that data in memory while operating with the class
+/// </summary>
 class CGIConvert
 {
 public:
 	
-	bool IsEmpty() const { return m_Packets.empty(); }
-	int GetNumberOfPackets() const { return static_cast<int>(m_Packets.size()); }
+	bool IsEmpty() const { return m_PacketsView.IsEmpty(); }
 
-	const CGIDataCartesian& GetPacket(const int index) { return m_Packets[index]; }
+	/// <summary>
+	/// returns a total number of imported packets
+	/// </summary>
+	int GetNumberOfPackets() const { return static_cast<int>(m_PacketsView.Count()); }
 
+	/// <summary>
+	/// returns a packet sorted by timecode value
+	/// </summary>
+	const CGIDataCartesian& GetPacket(const int index) 
+	{ 
+		const size_t lookUpIndex = m_SortedPackets[index];
+		return m_PacketsView.At(lookUpIndex); 
+	}
+
+	/// <summary>
+	/// main entry method, process the input buffer
+	/// </summary>
 	bool LoadPackets(uint8_t* buffer, size_t size, const float frame_rate)
 	{
 		if (IsAscii(buffer, size))
 		{
-			return LoadAscii(buffer, size, frame_rate, m_Packets);
+			return LoadAscii(buffer, size, frame_rate);// , m_Packets);
 		}
 
-		return LoadBinary(buffer, size, m_Packets);
+		return LoadBinary(buffer, size); // , m_Packets);
 	}
 
 	void SetFOV(float w, float h)
@@ -34,12 +104,12 @@ public:
 
 	bool IsCalibratedCGI() const
 	{
-		if (m_Packets.empty())
+		if (m_PacketsView.IsEmpty())
 		{
 			printf("calibratedCGI: not CGI data loaded.\n");
 			return false;
 		}
-		if (m_Packets.front().zoom < 0) return true;
+		if (m_PacketsView.First().zoom < 0) return true;
 		return false;
 	}
 
@@ -110,13 +180,36 @@ private:
 	double                        m_chipWidth{ 640.0 };
 	double                        m_chipHeight{ 480.0 };
 
-	// transform between TD-Coordinate system and MAYA/MB
+	/// transform between TD-Coordinate system and MAYA/MB
 	bool                          m_trafoToMayaCoordinateSystem{ true };
 
-	// transform from technofolly meters to animation metric system (default: cm, hence 100.0 is used)
+	/// transform from technofolly meters to animation metric system (default: cm, hence 100.0 is used)
 	float                         m_metricScalingFactorTD2FBX{ 100.0f };
 
-	std::vector<CGIDataCartesian> m_Packets;
+	ConstArrayView<CGIDataCartesian>	m_PacketsView;
+
+	/// indices of packets data sorted by timestamp
+	std::vector<size_t> m_SortedPackets;
+
+	/// store in memory in case we unpack packets from ascii
+	std::vector<CGIDataCartesian> m_UnpackedPackets;
+
+	void CalculateSortedPacketIndices()
+	{
+		if (m_PacketsView.IsEmpty())
+			return;
+
+		m_SortedPackets.resize(m_PacketsView.Count());
+		for (size_t i = 0; i < m_PacketsView.Count(); ++i)
+			m_SortedPackets[i] = i;
+
+		std::sort(begin(m_SortedPackets), end(m_SortedPackets), [&](const size_t a, const size_t b)
+			{
+				const CGIDataCartesian& packetA = m_PacketsView.At(a);
+				const CGIDataCartesian& packetB = m_PacketsView.At(b);
+				return packetA.timeCode < packetB.timeCode;
+			});
+	}
 
 	/**
 	 * check if file data is in ASCII or binary format.
@@ -155,7 +248,7 @@ private:
 	 * \param packets
 	 * \return true if operation was successfull
 	 */
-	bool LoadAscii(uint8_t* buffer, size_t size, float frame_rate, std::vector<CGIDataCartesian>& packets)
+	bool LoadAscii(uint8_t* buffer, size_t size, float frame_rate)
 	{
 		char line[1024]{ 0 };
 		char start_letter = '-';
@@ -166,6 +259,8 @@ private:
 
 		membuf mem_buf(reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
 		std::istream in(&mem_buf);
+
+		m_UnpackedPackets.clear();
 
 		do {
 			in.getline(line, 1024, '\n');
@@ -217,9 +312,12 @@ private:
 			ptr->frameNumber = frame_number;
 			ptr->time = static_cast<float>(frame_number / frame_rate);
 
-			packets.emplace_back(data);
+			m_UnpackedPackets.emplace_back(data);
 
 		} while (!in.eof());
+
+		m_PacketsView = ConstArrayView<CGIDataCartesian>(m_UnpackedPackets.data(), m_UnpackedPackets.size());
+		CalculateSortedPacketIndices();
 
 		return true;
 	}
@@ -232,12 +330,8 @@ private:
 	 * \param packets
 	 * \return true if opeartion was successfull
 	 */
-	bool LoadBinary(uint8_t* buffer, size_t size, std::vector<CGIDataCartesian>& packets)
+	bool LoadBinary(uint8_t* buffer, size_t size)
 	{
-		//membuf mem_buf(reinterpret_cast<char*>(buffer), reinterpret_cast<char*>(buffer + size));
-		//std::istream in(&mem_buf);
-		//in.ignore(std::numeric_limits<std::streamsize>::max());
-
 		if (size <= 0)
 		{
 			printf("File size is empty\n");
@@ -252,16 +346,9 @@ private:
 			return false;
 		}
 
-		packets.resize(number_of_packets);
+		m_PacketsView = ConstArrayView<CGIDataCartesian>(buffer, size);
+		CalculateSortedPacketIndices();
 
-		memcpy(packets.data(), buffer, size);
-
-		/*
-		for (size_t i = 0; i < number_of_packets; ++i) {
-			in.read(reinterpret_cast<char*>(&packets[i]), sizeof(CGIDataCartesian));
-			packets[i].packetNumber = i;
-		}
-		*/
 		return true;
 	}
 };
